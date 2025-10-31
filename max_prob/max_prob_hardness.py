@@ -6,13 +6,10 @@ import os
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 from functools import partial
-from plotters import max_prob_pareto_curve
 import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Add the project root directory to Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
-sys.path.insert(0, project_root)
-
+# Set up output directory
 workdir = os.path.dirname(os.path.abspath(__file__))
 outdir = os.path.join(workdir, "output")
 
@@ -598,19 +595,24 @@ class alpha_beta_curve:
             plt.savefig(outpath, bbox_inches="tight")
 
 if __name__ == '__main__':
-    # Required for multiprocessing on Windows and some Unix systems
-    n = 30   # number of arrivals
-    density = 0.001
-    strp = "1%x"
-    for m in [1024]:
+    # Example usage
+    n = 24  # number of arrivals
+    density = 0.001  # density: step size for alpha sampling
+    strp = "1%x" # strp: the string representation of the probability mass function for file naming
+    for m in [160]: # a list of m (support size) to try
+        # simplify = False: full curve over [0,1]x[0,1]
+        # simplify = True: only the part bounded by x=0.58 and y=1/e
+        # load_from_file=False: run experiment
+        # True: load from file if exists
+        # The data will automatically be saved to a folder named output in the same directory after experiment.
+        # suppfunc: the function to generate the probability mass function
         data = alpha_beta_curve(
-            n=n, m=m, simplify=True, density=density,
+            n=n, m=m, simplify=False, density=density,
             load_from_file=True, suppfunc=lambda x: 1/x, strp=strp
         )
         xaxisrange = (0, 0.8)
         yaxisrange = (0, 0.6)
-        max_prob_pareto_curve.optimal_curve_plotter(density=0.0001,
-                                                    xaxisrange=xaxisrange,yaxisrange=yaxisrange)
+        # Plot the constructed hardness curve against the trivial hardness curve
         data.plot(xaxisrange=xaxisrange,yaxisrange=yaxisrange,add_legend=True)
 
     plt.show()

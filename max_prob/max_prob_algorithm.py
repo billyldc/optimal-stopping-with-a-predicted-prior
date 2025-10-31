@@ -31,46 +31,36 @@ def solve_c():
     root = root_scalar(func, bracket=(0.1, 10), method='brentq')
     return root.root if root.converged else None
 
+# Print the solved c value
 c= solve_c()
 print("Solved c:", c)
-
 def compute_alpha(beta, lambda1, lambda2):
-    # -\lambda_{1}\ln\lambda_{1} + \int_{\lambda_{1}}^{\lambda_{2}} \int_{s}^{1}
-    #   \frac{e^{-ct/(1-s)} - t e^{-c/(1-s)}}{t(1-t)} dt ds - \int_{\lambda_{1}}^{\lambda_{2}} e^{-c/(1-s)} ds
+    # Compute beta + \int_{lambda1}^{lambda2} \int_s^1 exp(-c * t / (1-s)) / t dt ds
     if lambda1 is None or lambda2 is None:
         return np.nan
 
-    # handle lambda1 == 0 gracefully
-    term1 = f_lambda(lambda1) if (lambda1 is not None and lambda1 > 0) else 0.0
-
-    # integration tolerances and small cutoffs to avoid endpoint singularities
-    eps = 1e-9
+    eps = 1e-12
     s_lower = max(lambda1, eps)
-    s_upper = min(lambda2, 1.0 - 1e-9)
+    s_upper = min(lambda2, 1.0 - eps)
 
-    def inner_integrand(t, s):
-        # integrand as a function of t, with parameter s
-        return (np.exp(-c * t / (1.0 - s)) - t * np.exp(-c / (1.0 - s))) / (t * (1.0 - t))
-
-    def inner_integral(s):
-        # integrate t from s to 1 (but avoid exact 1)
-        t_lower = s
-        t_upper = 1.0 - 1e-9
-        val, err = quad(inner_integrand, t_lower, t_upper, args=(s,), epsabs=1e-8, epsrel=1e-8, limit=200)
-        return val
-
-    # outer integral over s
     if s_upper <= s_lower:
-        term2 = 0.0
-        term3 = 0.0
+        double_integral = 0.0
     else:
-        term2, err2 = quad(lambda s: inner_integral(s), s_lower, s_upper, epsabs=1e-8, epsrel=1e-8, limit=200)
-        term3, err3 = quad(lambda s: np.exp(-c / (1.0 - s)), s_lower, s_upper, epsabs=1e-8, epsrel=1e-8, limit=200)
+        def inner_integrand(t, s):
+            return np.exp(-c * t / (1.0 - s)) / t
 
-    alpha = term1 + term2 - term3
-    return alpha
+        def inner_integral(s):
+            t_lower = s
+            t_upper = 1.0 - eps
+            val, _ = quad(inner_integrand, t_lower, t_upper, args=(s,), epsabs=1e-9, epsrel=1e-9, limit=200)
+            return val
+
+        double_integral, _ = quad(lambda s: inner_integral(s), s_lower, s_upper, epsabs=1e-9, epsrel=1e-9, limit=200)
+
+    return beta + double_integral
 
 def optimal_curve_plotter(density=0.0001,xaxisrange=(0,1),yaxisrange=(0,1)):
+    """Plot the optimal alpha vs beta consistency curve against the trivial algorithm."""
     beta_values = np.arange(1e-9, 1.0/np.e, density)
     alpha_values = []
     for beta in beta_values:
@@ -96,5 +86,6 @@ def optimal_curve_plotter(density=0.0001,xaxisrange=(0,1),yaxisrange=(0,1)):
 __all__ = ["optimal_curve_plotter"]
 
 if __name__ == '__main__':
+    # Example usage and testing
     optimal_curve_plotter()
     plt.show()
