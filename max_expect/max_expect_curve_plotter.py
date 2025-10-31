@@ -1,48 +1,9 @@
 import numpy as np
-from scipy.integrate import quad
-from scipy.optimize import root_scalar
-from max_prob_pareto_curve import f_lambda, compute_lambdas, compute_alpha, solve_c
-from opt_analytical_threshold import optimal_alpha_beta
+from max_expect_algorithm import optimal_alpha_beta
 
 import matplotlib.pyplot as plt
 
-c= solve_c()
-print("Solved c:", c)
-def compute_alpha(beta, lambda1, lambda2):
-    # \alpha(\beta) = \beta +\int_{\lambda_1}^1\frac{\min \{t,\lambda_2\}-\lambda_1}{t} e^{-t} ~ \dif t.
-    if lambda1 is None or lambda2 is None:
-        return np.nan
-
-    def integrand(t):
-        # handle the removable singularity at t=0 when lambda1 == 0
-        if lambda1 == 0 and t < 1e-12:
-            return np.exp(-t)  # limit is e^{-t} because min(t,lambda2)/t -> 1 for small t
-        numerator = min(t, lambda2) - lambda1
-        return (numerator / t) * np.exp(-t)
-
-    t_lower = max(lambda1, 0.0)
-    t_upper = 1.0
-    if t_lower >= t_upper:
-        return beta
-
-    try:
-        val, err = quad(integrand, t_lower, t_upper, epsabs=1e-9, epsrel=1e-9, limit=200)
-    except Exception:
-        return np.nan
-
-    return beta + val
-
 def optimal_curve_plotter(density=0.005,xaxisrange=(0,1),yaxisrange=(0,1)):
-    # beta_values = np.arange(1e-9, 1.0/np.e, density)
-    # alpha_values = []
-    # for beta in beta_values:
-    #     try:
-    #         lambda1, lambda2 = compute_lambdas(beta)
-    #     except Exception:
-    #         alpha_values.append(np.nan)
-    #         continue
-    #     alpha_values.append(compute_alpha(beta, lambda1, lambda2))
-    # our algorithm
     beta_values, alpha_values = optimal_alpha_beta(density=density)
     plt.plot(alpha_values, beta_values, '-', label="our algorithm",color='tab:blue')
 
@@ -83,5 +44,7 @@ __all__ = ["optimal_curve_plotter"]
 if __name__ == '__main__':
     xaxisrange = (0, 0.8)
     yaxisrange = (0, 0.6)
+    # Plot the alpha vs beta consistency-robustness curve with its tangent to (0.745, 0),
+    # trivial algorithm and trivial hardness
     optimal_curve_plotter(xaxisrange=xaxisrange,yaxisrange=yaxisrange)
     plt.show()
