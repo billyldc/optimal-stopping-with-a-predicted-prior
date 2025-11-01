@@ -46,12 +46,14 @@ def lambdas(beta):
     ).root
     return lambda1, lambda2
 
+
 def plot_thresholds(ax, T, D, GM, lambda_1, lambda_2):
     """Plot Dynkin, Gilbert-Mosteller, and Robust thresholds on the given axis."""
     R = np.where((T >= lambda_1) & (T <= lambda_2), GM, D)
     ax.plot(T, D, label="Dynkin", color="tab:orange")
     ax.plot(T, GM, label="Gilbert-Mosteller", color="tab:blue")
     ax.plot(T, R, label="Robust", color="tab:green", linewidth=3)
+
 
 def style_threshold_plot(ax, lambda_1, lambda_2):
     """Apply consistent styling to the threshold plot."""
@@ -76,6 +78,7 @@ def style_threshold_plot(ax, lambda_1, lambda_2):
     ax.grid(True, linestyle="--", alpha=0.5)
     ax.legend(loc=(0.8, 0.8))
 
+
 def main():
     n = 10
     beta = 1 / 3
@@ -89,6 +92,7 @@ def main():
     style_threshold_plot(ax, lambda_1, lambda_2)
     plt.tight_layout()
     plt.show()
+
 
 if __name__ == "__main__":
     main()
