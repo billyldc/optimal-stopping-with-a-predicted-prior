@@ -8,20 +8,25 @@ from scipy.integrate import quad
 def f_lambda(x):
     # Compute lambda1 and lambda2 for beta values from 0 to 1/e
     if x <= 0 or x >= 1:
-        return float('inf')
+        return float("inf")
     return -x * np.log(x)
 
+
 def compute_lambdas(beta):
-    if beta < 0 or beta > 1/np.e:
+    if beta < 0 or beta > 1 / np.e:
         raise ValueError("Beta must be in the range [0, 1/e]")
     if beta == 0:
         return 0, 1
     # Small root (lambda1) in interval (0, 1/e)
-    root1 = root_scalar(lambda x: f_lambda(x) - beta, bracket=(1e-10, 1/np.e), method='brentq')
+    root1 = root_scalar(
+        lambda x: f_lambda(x) - beta, bracket=(1e-10, 1 / np.e), method="brentq"
+    )
     lambda1 = root1.root if root1.converged else None
 
     # Large root (lambda2) in interval (1/e, 1)
-    root2 = root_scalar(lambda x: f_lambda(x) - beta, bracket=(1/np.e, 1-1e-10), method='brentq')
+    root2 = root_scalar(
+        lambda x: f_lambda(x) - beta, bracket=(1 / np.e, 1 - 1e-10), method="brentq"
+    )
     lambda2 = root2.root if root2.converged else None
     return lambda1, lambda2
 
@@ -284,10 +289,11 @@ if __name__ == "__main__":
     # plt.plot(modify_alphas,betas,label='modified curve of alpha,beta at n=inf')
     plt.plot(alphas_1, betas, label='optimal solution for the differential equation')
     plt.legend()
-    plt.xlabel('alpha')
-    plt.ylabel('beta')
-    plt.title('Pareto curve of (beta, alpha)')
+    plt.xlabel("alpha")
+    plt.ylabel("beta")
+    plt.title("Pareto curve of (beta, alpha)")
     plt.grid(True)
-    plt.xlim(0,1)
-    plt.ylim(0,1)
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
     plt.show()
+
