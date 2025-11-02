@@ -87,7 +87,7 @@ def main():
     GM = gilbert_mosteller_threshold(T, n)
 
     lambda_1, lambda_2 = lambdas(beta)
-    fig, ax = plt.subplots(figsize=(6, 3.5))
+    fig, ax = plt.subplots(figsize=(6, 3.5), dpi=500)
     plot_thresholds(ax, T, D, GM, lambda_1, lambda_2)
     style_threshold_plot(ax, lambda_1, lambda_2)
     plt.tight_layout()
