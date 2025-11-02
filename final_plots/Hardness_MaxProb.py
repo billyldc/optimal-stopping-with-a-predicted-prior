@@ -130,8 +130,6 @@ def compute_tradeoff_curve(n, masses, density, filename=None):
 
 def plot_hardness_MaxProb(ax, n, K, density=0.001, color="tab:green", filename=None):
     if not os.path.exists(filename):
-        n = 20
-        K = 256
         masses = [1 / k for k in range(1, K + 1)]
         α_values, β_values = compute_tradeoff_curve(
             n, masses, density, filename=filename
@@ -145,9 +143,9 @@ def plot_hardness_MaxProb(ax, n, K, density=0.001, color="tab:green", filename=N
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5, 4.5), dpi=500)
-    n, K = 20, 256
+    n, K = 32, 1024
     plot_hardness_MaxProb(
-        ax, n, K, filename="../max_prob/output/simplified/n=30,m=1024, p=1%x.txt"
+        ax, n, K, filename=f"Hardness_MaxProb_n={n}_K={K}.txt"
     )
     plt.tight_layout()
     plt.legend()
