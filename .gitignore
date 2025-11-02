@@ -1,0 +1,23 @@
+*.synctex.gz
+*.aux
+*.log
+*.bbl
+*.env
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.xdv
+*.cfg
+_minted*
+main.pdf
+.DS_Store
+main.synctex(busy)
+*.bkp
+*.cut
+
+// ignore all files whose name containing "local_test"
+local_test*
+
+// profile ignore
+mathematica code_ldc/
