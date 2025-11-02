@@ -43,7 +43,7 @@ def plot_algorithm_MaxProb(ax, density=0.0001, color="tab:orange", filename=None
                 α_values.append(np.nan)
                 continue
         arr = np.column_stack((α_values, β_values))
-        np.savetxt(filename, arr, fmt="%.12f", header="α β")
+        save_data(arr, filename)
     else:
         α_values, β_values = read_data(filename)
     plot_tradeoff_curve(
