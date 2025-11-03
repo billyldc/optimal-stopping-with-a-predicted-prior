@@ -101,15 +101,15 @@ def compute_tradeoff_curve(n, masses, num_points, filename=None):
     args_list = [(n, masses, i/num_points) for i in range(num_points+1) if i%5!=0]
 
     n_tasks = len(args_list)
-    n_workers = min(mp.cpu_count()//4, n_tasks)
-    split = [i for i in range(0, n_tasks, 4)]
+    n_workers = 3
+    split = [i for i in range(28, n_tasks, 3)]
     result = []
     for i in range(len(split)):
         with mp.Pool(processes=n_workers, initializer=init_worker) as pool:
             partial = pool.map(evaluate_λ_point, args_list[split[i]:(split[i+1] if i+1 <= len(split)-1 else n_tasks)])
         print(partial)
         result.extend(partial)
-        save_data(np.array(partial), f"output/lambda_Hardness_MaxProb_n={n}_K={K}_i={split[i]}_to_{(split[i+1] if i+1 <= len(split)-1 else n_tasks)}.txt")
+        save_data(np.array(partial), f"output_continue/lambda_Hardness_MaxProb_n={n}_K={K}_i={split[i]}_to_{(split[i+1] if i+1 <= len(split)-1 else n_tasks)}.txt")
 
     if filename is not None:
         arr = np.array(result)
@@ -135,7 +135,7 @@ def plot_hardness_MaxProb(ax, n, K, num_points = 100, color="tab:green", filenam
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5, 4.5), dpi=500)
-    n, K = 30, 1024
+    n, K = 3,3#30, 1024
     plot_hardness_MaxProb(
         ax, n, K, num_points = 100,
         filename=f"lambda_Hardness_MaxProb_n={n}_K={K}.txt"
