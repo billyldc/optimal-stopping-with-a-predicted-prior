@@ -1,12 +1,38 @@
 import numpy as np
-from max_expect_algorithm import optimal_alpha_beta
-
 import matplotlib.pyplot as plt
+import os
+import re
 
 
 def optimal_curve_plotter(density=0.005, xaxisrange=(0, 1), yaxisrange=(0, 1)):
-    beta_values, alpha_values = optimal_alpha_beta(density=density)
-    plt.plot(alpha_values, beta_values, "-", label="our algorithm", color="tab:blue")
+    # Load alphas and betas from alpha_betas.txt in the same directory
+    file_path = os.path.join(os.path.dirname(__file__), "alpha_betas.txt")
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    def _extract(name: str) -> np.ndarray:
+        m = re.search(rf"{name}\s*=\s*\[(.*?)\]", content, re.DOTALL)
+        if not m:
+            raise ValueError(f"{name} array not found in alpha_betas.txt")
+        nums = re.findall(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?", m.group(1))
+        return np.array([float(x) for x in nums], dtype=float)
+
+    beta_values = _extract("betas")
+    alpha_values = _extract("alphas")
+    # plot the curve as the boundary of achievable (alpha,beta) pairs, i.e., (x,y:exists i, x<=alpha_i,y<=beta_i)
+    plot_alpha_values = []
+    plot_beta_values = []
+    for i in range(len(alpha_values)):
+        if i==0:
+            plot_alpha_values.append(alpha_values[i])
+            plot_beta_values.append(0)
+        plot_alpha_values.append(alpha_values[i])
+        plot_beta_values.append(beta_values[i])
+        if i!=len(alpha_values)-1:
+            plot_alpha_values.append(alpha_values[i+1])
+            plot_beta_values.append(beta_values[i])
+
+    plt.plot(plot_alpha_values, plot_beta_values, "-", label="our algorithm", color="tab:green")
 
     # Find tangent from (0.745, 0) to the curve
     x0, y0 = 0.745, 0
