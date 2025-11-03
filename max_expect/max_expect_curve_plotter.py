@@ -1,5 +1,4 @@
 import numpy as np
-from max_expect_algorithm import optimal_alpha_beta
 import matplotlib.pyplot as plt
 import os
 import re
