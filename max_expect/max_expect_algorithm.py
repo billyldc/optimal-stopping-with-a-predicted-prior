@@ -256,34 +256,30 @@ def optimal_alpha_beta(density):
 
 
 if __name__ == "__main__":
-    # # alpha_z_label_tuples=[ (alpha,0.0,1.0,True) for alpha in np.linspace(0.7006050,0.7006100,11)]
-    # alpha_z_label_tuples = [ (alpha, 0.01, 1, True) for alpha in np.linspace(0.01, 1.0, 40)]
-    # beta=0.1
-    # lambda1, lambda2 = compute_lambdas(beta)
-    # plot_batch(alpha_z_label_tuples=alpha_z_label_tuples, ylimit=(0,1), rounding=4, num_points=5000)
-    # alpha_low, alpha_high = search_optimal_alpha(z0=lambda1, z1=lambda2, alpha_start=0.01, alpha_end=1.0, max_iter=20,n_points=5000)
-    # print(f"Optimal alpha between z0=0.2 and z1=0.8: alpha_low={alpha_low}, alpha_high={alpha_high}")
-    # # now that the larger alpha_high is the one that reaches z1
-    # bound_difference = boundary_difference_theta(beta=0.2, alpha=alpha_high)
-    # print(f"Boundary difference for beta=0.2 and alpha={alpha_high}: {bound_difference}")
-    # exit()
-    # alpha_z_label_tuples=[ (alpha,0.2,0.8,True) for alpha in np.linspace(0.0,1.0,100)]
-    # plot_batch(alpha_z_label_tuples=alpha_z_label_tuples, ylimit=(-20,20),num_points=5000)
-
-    betas=np.linspace(0.01, 1/np.e-2*1e-3, 30)
+    # Numerical solution mentioned in Appendix B
+    # Compute a feasible threshold function for a range of beta values
+    #  betas = []
+    # alphas = []
+    start = 1e-6
+    end = 1/np.e-2*1e-3
+    density=0.005
+    n_points = max(1, int(np.floor((end - start) / density)) + 1)
+    betas=np.linspace(start, end, n_points)
     alphas=[]
     for beta in betas:
         lambda1, lambda2 = compute_lambdas(beta)
         alpha_low, alpha_high = search_optimal_alpha(z0=lambda1, z1=lambda2, alpha_start=0.001, alpha_end=1.0, max_iter=20, n_points=5000)
         theta_lambda2,ineq_val= solve_init_theta_lambda2(lambda2,alpha_high)
         error=0.001
+        alphas.append(alpha_high-error)
+        continue
         threshold_vals=solve_de_recursively(beta,alpha_high-error,num_steps=300)
         out_path = os.path.join(os.path.dirname(__file__), "valid_threshold_functions.txt")
         with open(out_path, "a", encoding="utf-8") as f:
-            f.write(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha_high-error}, threshold_vals={threshold_vals}\n")
+            f.write(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha}, threshold_vals={threshold_vals}\n")
         if threshold_vals[0]>1.0:
-            alphas.append(alpha_high-error)
-            print(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha_high-error}, threshold at lambda1={threshold_vals[0]}") 
+            alphas.append(alpha)
+            print(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha}, threshold at lambda1={threshold_vals[0]}") 
         else:
             print("Warning: Threshold at lambda1 does not exceed 1.0. Skip this beta.")
             alphas.append(0)
@@ -306,6 +302,11 @@ if __name__ == "__main__":
         print(f"beta={beta}, lambda1={lambda1}, modified_lambda2={modified_lambda2}, modified_alpha={modified_alpha}")
         plt.show()
         exit()
+    out_path = os.path.join(os.path.dirname(__file__), "alpha_betas.txt")
+    with open(out_path, "a", encoding="utf-8") as f:
+        f.write(f"betas={betas}\n")
+        f.write(f"alphas={alphas}\n")
+    print(alphas,betas)
     plt.plot(betas, alphas, label='optimal solution for the differential equation')
     plt.xlabel("beta")
     plt.ylabel("alpha")
