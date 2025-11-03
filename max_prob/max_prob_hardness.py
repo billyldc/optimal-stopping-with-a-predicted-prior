@@ -304,6 +304,8 @@ class LP_maxprob:
                         name=f"R_{(t,l)} >= 0",
                     )
 
+        self.model.write("correct_model.lp")
+
     def ALG(self, k, S):
         """
         Computes the winning probability for distribution `k`.
@@ -684,6 +686,15 @@ class alpha_beta_curve:
             plt.savefig(outpath, bbox_inches="tight")
 
 
+n = 4
+F = Distributions([1, 1 / 2, 1 / 3])
+model = LP_maxprob(n, F, None, 0.2, outputflag=0)
+S, a, b = model.solve()
+y, alpha, beta = model.solve()
+print(alpha, beta)
+print(y)
+
+"""
 if __name__ == "__main__":
     # Example usage
     n = 24  # number of arrivals
@@ -717,3 +728,4 @@ if __name__ == "__main__":
 # alpha is experimented in [0.5602568817156317, 0.58]
 # Given alpha = 0.5602568817156317, maximizing beta ...
 # Optimal solution found, beta * = 0.3678794464707393
+"""

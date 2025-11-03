@@ -5,6 +5,7 @@ from scipy.optimize import root_scalar
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
 
+
 # auxiliary functions
 def f_lambda(x):
     # Compute lambda1 and lambda2 for beta values from 0 to 1/e
@@ -31,6 +32,7 @@ def compute_lambdas(beta):
     lambda2 = root2.root if root2.converged else None
     return lambda1, lambda2
 
+
 # ODE:
 #  \threshold'(z)=-\frac{\threshold(z)^z}{\alpha-z \frac{1-\threshold(z)^{z-1}}{\ln \threshold(z)}}
 
@@ -54,7 +56,8 @@ def compute_lambdas(beta):
 #         denom_approx = K + u * (u - 1.0)
 #         denom_approx = np.sign(denom_approx) * max(abs(denom_approx), D_small)
 #         return [1.0 / denom_approx]
-    # return [num / den]
+# return [num / den]
+
 
 # check if \beta+\int_{s=\lambda_1}^{\lambda_2} \int_{t=s}^1 \frac{\threshold(s)^t}{t} \dd t \dd s
 def boundary_difference_theta(beta, alpha):
@@ -65,9 +68,13 @@ def boundary_difference_theta(beta, alpha):
     eps = 1e-12
     s_lower = max(lambda_1, eps)
     s_upper = min(lambda_2, 1.0 - eps)
-    sol, reached_full = solve_theta_for_alpha(alpha, z0=s_lower, z1=s_upper, n_points=500)
+    sol, reached_full = solve_theta_for_alpha(
+        alpha, z0=s_lower, z1=s_upper, n_points=500
+    )
     if sol is None:
-        raise RuntimeError(f"solve_theta_for_alpha failed for alpha={alpha}, z0={s_lower}, z1={s_upper}")
+        raise RuntimeError(
+            f"solve_theta_for_alpha failed for alpha={alpha}, z0={s_lower}, z1={s_upper}"
+        )
 
     # build a callable theta(s) using interpolation from the solver results
     def theta(s):
@@ -84,10 +91,25 @@ def boundary_difference_theta(beta, alpha):
     def inner_integral(s):
         t_lower = s
         t_upper = 1.0 - eps
-        val, _ = quad(inner_integrand, t_lower, t_upper, args=(s,), epsabs=1e-9, epsrel=1e-9, limit=200)
+        val, _ = quad(
+            inner_integrand,
+            t_lower,
+            t_upper,
+            args=(s,),
+            epsabs=1e-9,
+            epsrel=1e-9,
+            limit=200,
+        )
         return val
 
-    double_integral, _ = quad(lambda s: inner_integral(s), s_lower, s_upper, epsabs=1e-9, epsrel=1e-9, limit=200)
+    double_integral, _ = quad(
+        lambda s: inner_integral(s),
+        s_lower,
+        s_upper,
+        epsabs=1e-9,
+        epsrel=1e-9,
+        limit=200,
+    )
     return beta + double_integral
 
 def direct_verifier(beta, alpha, n_points=5000):
@@ -254,7 +276,8 @@ def verifier_valid(beta, alpha):
     # plt.show()
     return min_alpha
 
-def boundary_2(lambda2, threshold_lambda2,alpha):
+
+def boundary_2(lambda2, threshold_lambda2, alpha):
     # compute \lambda_2 \int_{\lambda_2}^{1} \frac{\theta(\lambda_2)^t}{t} dt- alpha * theta(lambda_2)
     eps = 1e-12
     t_lower = lambda2
@@ -263,27 +286,31 @@ def boundary_2(lambda2, threshold_lambda2,alpha):
         return 0.0
     integrand = lambda t: np.exp(t * np.log(threshold_lambda2)) / t
     integral, _ = quad(integrand, t_lower, t_upper, epsabs=1e-9, epsrel=1e-9, limit=200)
-    return lambda2 * integral -alpha*threshold_lambda2
+    return lambda2 * integral - alpha * threshold_lambda2
+
 
 def dtheta_dz(z, y, alpha):
     # denominator of theta' ODE
     # z * (1 - theta^{z-1}) / ln theta - \alpha
     # Handle small theta and near-singular denominators
-    theta=y[0]
+    theta = y[0]
     theta_small = 1e-10
     D_small = 1e-10
-    if abs(theta-1)< theta_small:
+    if abs(theta - 1) < theta_small:
         # For theta->1, (1 - theta^{z-1})/ln theta ~ (1-z)
-        denom_approx =  z * (1.0 - z) - alpha
+        denom_approx = z * (1.0 - z) - alpha
         denom_approx = np.sign(denom_approx) * max(abs(denom_approx), D_small)
-        return [1.0/denom_approx]
-    denom =  z * (1.0 - np.exp((z - 1.0) * np.log(theta))) / np.log(theta) - alpha
+        return [1.0 / denom_approx]
+    denom = z * (1.0 - np.exp((z - 1.0) * np.log(theta))) / np.log(theta) - alpha
     numerator = np.exp(z * np.log(theta))
     if abs(denom) < D_small:
         denom = np.sign(denom) * D_small
     return [numerator / denom]
 
-def solve_theta_for_alpha(alpha, z0=0.0, z1=1.0, method='Radau', rtol=1e-10, atol=1e-10, n_points=200):
+
+def solve_theta_for_alpha(
+    alpha, z0=0.0, z1=1.0, method="Radau", rtol=1e-10, atol=1e-10, n_points=200
+):
     """
     Solve the ODE for given alpha and return (sol, reached_full_z)
     reached_full_z is True when the solver produced values at all points in z_eval.
@@ -309,7 +336,10 @@ def solve_theta_for_alpha(alpha, z0=0.0, z1=1.0, method='Radau', rtol=1e-10, ato
     except Exception:
         return None, False
 
-def search_optimal_alpha(z0=0.0, z1=1.0, alpha_start=0.01, alpha_end=1.0, max_iter=10, n_points=5000):
+
+def search_optimal_alpha(
+    z0=0.0, z1=1.0, alpha_start=0.01, alpha_end=1.0, max_iter=10, n_points=5000
+):
     """
     Binary search for the boundary alpha:
     find largest alpha_low such that solver does NOT reach z1 (sol.t.size < len(z_eval))
@@ -320,6 +350,7 @@ def search_optimal_alpha(z0=0.0, z1=1.0, alpha_start=0.01, alpha_end=1.0, max_it
     def reached_full_z(alpha):
         _, reached_full = solve_theta_for_alpha(alpha, z0=z0, z1=z1, n_points=n_points)
         return reached_full
+
     # # alpha_start= max(alpha_start, z0*(1.0 - z0)+ 1e-12)  # ensure alpha_start > z0(1-z0), otherwise theta' denominator is larger than 0 at z0
 
     # # use grid search first to find a valid bracket
@@ -366,11 +397,22 @@ def search_optimal_alpha(z0=0.0, z1=1.0, alpha_start=0.01, alpha_end=1.0, max_it
     # print(f"Search done in {it} iters. Largest failing alpha ~ {alpha_low}, smallest reaching alpha ~ {alpha_high}")
     return (alpha_low, alpha_high)
 
-def plot_one_alpha(alpha_value, z0=0.0, z1=1.0, is_labeled=True, plotter=None, n_points=100, rounding=10):
+
+def plot_one_alpha(
+    alpha_value,
+    z0=0.0,
+    z1=1.0,
+    is_labeled=True,
+    plotter=None,
+    n_points=100,
+    rounding=10,
+):
     ## plot for one alpha_value and z0,z1
     ## label the curve if required
     try:
-        sol, reached_full = solve_theta_for_alpha(alpha_value, z0=z0, z1=z1, n_points=n_points)
+        sol, reached_full = solve_theta_for_alpha(
+            alpha_value, z0=z0, z1=z1, n_points=n_points
+        )
         if sol is None:
             print(f"No solution (exception) for alpha={alpha_value}")
 
@@ -389,33 +431,41 @@ def plot_one_alpha(alpha_value, z0=0.0, z1=1.0, is_labeled=True, plotter=None, n
         print(f"Error for alpha={alpha_value}: {e}")
     return plotter
 
-def plot_batch(alpha_z_label_tuples, ylimit=(0,20), num_points=100, rounding=10):
+
+def plot_batch(alpha_z_label_tuples, ylimit=(0, 20), num_points=100, rounding=10):
     ## plot for a batch of (alpha,z0,z1) tuples
     plotter = plt.figure(figsize=(10, 6))
     for alpha, z0, z1, is_labeled in alpha_z_label_tuples:
-        plotter = plot_one_alpha(alpha, z0, z1, is_labeled, plotter, n_points=num_points, rounding=rounding)
+        plotter = plot_one_alpha(
+            alpha, z0, z1, is_labeled, plotter, n_points=num_points, rounding=rounding
+        )
     plt.xlim(0, 1)
     plt.ylim(ylimit)
-    plt.xlabel('z')
-    plt.ylabel('theta(z)')
-    plt.title('Numerical solution theta(z)')
+    plt.xlabel("z")
+    plt.ylabel("theta(z)")
+    plt.title("Numerical solution theta(z)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
+
 def optimal_alpha_beta(density):
     betas = []
     alphas = []
     start = 1e-6
-    end = 1/np.e-2*1e-3
+    end = 1 / np.e - 2 * 1e-3
     # compute integer number of points from the desired step size `density`
     # ensure at least one point
     n_points = max(1, int(np.floor((end - start) / density)) + 1)
     for beta in np.linspace(start, end, n_points):
         lambda1, lambda2 = compute_lambdas(beta)
-        alpha_low, alpha_high = search_optimal_alpha(z0=lambda1, z1=lambda2, alpha_start=0.01, alpha_end=1.0, max_iter=20)
-        print(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha_low={alpha_low}, alpha_high={alpha_high}")
+        alpha_low, alpha_high = search_optimal_alpha(
+            z0=lambda1, z1=lambda2, alpha_start=0.01, alpha_end=1.0, max_iter=20
+        )
+        print(
+            f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha_low={alpha_low}, alpha_high={alpha_high}"
+        )
         alpha = alpha_high if alpha_high is not None else np.nan
         betas.append(beta)
         alphas.append(alpha)
@@ -463,13 +513,19 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.show()
 
-
-    betas = np.linspace(1e-6, 1/np.e-2*1e-3, 10)
+    betas = np.linspace(1e-6, 1 / np.e - 2 * 1e-3, 10)
     alphas_1 = []
     alphas_2 = []
     for beta in betas:
         lambda1, lambda2 = compute_lambdas(beta)
-        alpha_low, alpha_high = search_optimal_alpha(z0=lambda1, z1=lambda2, alpha_start=0.01, alpha_end=1.0, max_iter=20, n_points=5000)
+        alpha_low, alpha_high = search_optimal_alpha(
+            z0=lambda1,
+            z1=lambda2,
+            alpha_start=0.01,
+            alpha_end=1.0,
+            max_iter=20,
+            n_points=5000,
+        )
         alpha_1 = alpha_high if alpha_high is not None else np.nan
         alphas_1.append(alpha_1)
         bound_difference = boundary_difference_theta(beta, alpha=alpha_high)
@@ -479,7 +535,7 @@ if __name__ == "__main__":
         print(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha_high={alpha_high}, boundary_difference={bound_difference}, boundary_2_value={boundary_2_value}, verifier_alpha_3={verifier_alpha_3}")
 
     # plt.plot(modify_alphas,betas,label='modified curve of alpha,beta at n=inf')
-    plt.plot(alphas_1, betas, label='optimal solution for the differential equation')
+    plt.plot(alphas_1, betas, label="optimal solution for the differential equation")
     plt.legend()
     plt.xlabel("alpha")
     plt.ylabel("beta")
@@ -488,4 +544,3 @@ if __name__ == "__main__":
     plt.xlim(0, 1)
     plt.ylim(0, 1)
     plt.show()
-

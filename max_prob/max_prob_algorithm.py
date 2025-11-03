@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import root_scalar
-
+from math import factorial
 import matplotlib.pyplot as plt
 
 
@@ -34,7 +34,7 @@ def compute_lambdas(beta):
 
 # solve c as the root of \sum_{j=1}^{\infty} \frac{c^j}{j!j} = 1
 def solve_c():
-    func = lambda c: sum(c**j / (np.math.factorial(j) * j) for j in range(1, 100)) - 1
+    func = lambda c: sum(c**j / (factorial(j) * j) for j in range(1, 100)) - 1
     root = root_scalar(func, bracket=(0.1, 10), method="brentq")
     return root.root if root.converged else None
 
