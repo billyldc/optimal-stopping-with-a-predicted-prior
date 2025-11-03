@@ -24,9 +24,9 @@ def compute_λ(β):
     return λ1, λ2
 
 
-def save_data(result, filename):
+def save_data(result, filename, header = "α β"):
     arr = np.array(result)
-    np.savetxt(filename, arr, fmt="%.12f", header="α β")
+    np.savetxt(filename, arr, fmt="%.12f", header=header)
 
 
 def read_data(filename):
@@ -38,7 +38,7 @@ def read_data(filename):
 
 def plot_tradeoff_curve(ax, α_values, β_values, mode, color, label=None):
     if mode == "algo":
-        ax.step(α_values, β_values, where="pre", color=color, label=label)
+        ax.plot(α_values, β_values, color=color, label=label)
     elif mode == "hard":
         ax.step(α_values, β_values, where="post", color=color, label=label)
     else:
