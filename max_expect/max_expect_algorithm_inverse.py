@@ -3,6 +3,7 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from scipy.optimize import root_scalar
 from scipy.integrate import quad
+import os
 import matplotlib.pyplot as plt
 
 # auxiliary functions
@@ -31,239 +32,71 @@ def compute_lambdas(beta):
     lambda2 = root2.root if root2.converged else None
     return lambda1, lambda2
 
-# ODE:
-#  \threshold'(z)=-\frac{\threshold(z)^z}{\alpha-z \frac{1-\threshold(z)^{z-1}}{\ln \threshold(z)}}
+def solve_init_theta_lambda2(lambda2,alpha):
+    """
+    Solve the equation lambda2 *\int_{lambda2}^{1} theta(lambda2)^t / t dt = alpha *theta(lambda2)
+    """
+    def integrand(t, theta_val):
+        return np.exp( t * np.log(theta_val)) / t
 
-# def dC_du(u, y, K):
-#     C = y[0]
-#     # Safeguards for small C and near-singular denominators
-#     C_small = 1e-10
-#     D_small = 1e-10
-#     if abs(C) < C_small:
-#         # For small C, C' ~ 1 / (K + u(u-1)) and as u->0, ~ 1/K
-#         denom_approx = K + u * (u - 1.0)
-#         denom_approx = np.sign(denom_approx) * max(abs(denom_approx), D_small)
-#         return [1.0 / denom_approx]
+    def equation(theta):
+        I, _ = quad(integrand, lambda2, 1, args=(theta,))
+        return lambda2 * I - alpha * theta
 
-#     e_uc = np.exp(-u * C)
-#     num = C * e_uc
-#     den = denom(u, C, K)
+    root_low=0.0
+    root_high=1.0
+    for _it in range(50):
+        mid=0.5 * (root_low + root_high)
+        if equation(mid)<0:
+            root_high= 0.5 * (root_low + root_high)
+        else:
+            root_low= 0.5 * (root_low + root_high)
+    return root_low, equation(root_low)
 
-#     if abs(den) < D_small:
-#         # Fall back to small-C-style approximation if denominator nearly vanishes
-#         denom_approx = K + u * (u - 1.0)
-#         denom_approx = np.sign(denom_approx) * max(abs(denom_approx), D_small)
-#         return [1.0 / denom_approx]
-    # return [num / den]
+def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
+    lambda1, lambda2 = compute_lambdas(beta)
+    theta_lambda2, _ = solve_init_theta_lambda2(lambda2, alpha)
+    m=num_steps
+    dz = (lambda2 - lambda1) / m
+    threshold_vals=[1.0]*(m+1)
+    for i in range(m,0,-1):
+        z_ip1= lambda1 + i * dz
+        def integrand(t, theta_val):
+            return np.exp( t * np.log(theta_val)) / t
+        def equation(theta):
+            term1= z_ip1 * quad(integrand, z_ip1, 1, args=(theta,))[0]
+            term2= dz * sum(quad(integrand, lambda1 + j * dz, 1, args=(threshold_vals[j-1],))[0] for j in range(i+1,m+1))
+            return term1 + term2 - alpha * theta
+        root_low=0.0
+        root_high=2.0
+        for _it in range(100):
+            mid=0.5 * (root_low + root_high)
+            if equation(mid)<0:
+                root_high= 0.5 * (root_low + root_high)
+            else:
+                root_low= 0.5 * (root_low + root_high)
+        threshold_vals[i]= root_low
+    # plot the thresholds as a piecewise-constant (step) function:
+    # theta(z) = threshold_vals[i] for z in [lambda1 + (i-1)*dz, lambda1 + i*dz]
+    threshold_vals[0] = threshold_vals[1]  # define value at z = lambda1
 
-# check if \beta+\int_{s=\lambda_1}^{\lambda_2} \int_{t=s}^1 \frac{\threshold(s)^t}{t} \dd t \dd s
-def boundary_difference_theta(beta, alpha):
-    # compute \beta + \int_{\lambda_1}^{\lambda_2} \int_{s}^{1} \frac{\theta(s)^t}{t} dt ds
-    lambda_1, lambda_2 = compute_lambdas(beta)
-    if lambda_1 is None or lambda_2 is None:
-        raise ValueError(f"compute_lambdas did not converge for beta={beta}")
-    eps = 1e-12
-    s_lower = max(lambda_1, eps)
-    s_upper = min(lambda_2, 1.0 - eps)
-    sol, reached_full = solve_theta_for_alpha(alpha, z0=s_lower, z1=s_upper, n_points=500)
-    if sol is None:
-        raise RuntimeError(f"solve_theta_for_alpha failed for alpha={alpha}, z0={s_lower}, z1={s_upper}")
+    z_edges = np.linspace(lambda1, lambda2, m + 1)
+    # For 'post': y[i] applies on [x[i], x[i+1]); repeat last value to keep flat at the end
+    y_steps = np.empty(m + 1)
+    y_steps[:-1] = threshold_vals[1:]
+    y_steps[-1] = threshold_vals[-1]
+    
+    if if_plot:
+        plt.figure()
+        plt.step(z_edges, y_steps, where='post')
+        plt.xlabel('z')
+        plt.ylabel('theta(z)')
+        plt.title(f'Threshold function theta(z) for beta={beta}, alpha={alpha}')
+        plt.xlim(lambda1, lambda2)
+        plt.grid(True)
+        plt.show()
+    return threshold_vals
 
-    # build a callable theta(s) using interpolation from the solver results
-    def theta(s):
-        # np.interp handles scalar or array s; use solver grid values and return edge values outside range
-        return np.interp(s, sol.t, sol.y[0], left=sol.y[0][0], right=sol.y[0][-1])
-
-    def inner_integrand(t, s):
-        theta_s = theta(s)
-        # if theta_s == 0 or negative (numerical), integrand is zero for t>0
-        if theta_s <= 0.0:
-            return 0.0
-        return np.exp(t * np.log(theta_s)) / t
-
-    def inner_integral(s):
-        t_lower = s
-        t_upper = 1.0 - eps
-        val, _ = quad(inner_integrand, t_lower, t_upper, args=(s,), epsabs=1e-9, epsrel=1e-9, limit=200)
-        return val
-
-    double_integral, _ = quad(lambda s: inner_integral(s), s_lower, s_upper, epsabs=1e-9, epsrel=1e-9, limit=200)
-    return beta + double_integral
-
-def direct_verifier(beta, alpha, n_points=5000):
-    # Compute α' = min_i [ z_i ∫_{z_{i+1}}^1 θ_α(z_{i+1})^t / t dt
-    #                     + ((λ2-λ1)/m) * Σ_{j=i+1}^m ∫_{z_{j+1}}^1 θ_α(z_j)^t / t dt ] / θ_α(z_i)
-    lambda_1, lambda_2 = compute_lambdas(beta)
-    if lambda_1 is None or lambda_2 is None:
-        raise ValueError(f"compute_lambdas did not converge for beta={beta}")
-    eps = 1e-12
-    s_lower = max(lambda_1, eps)
-    s_upper = min(lambda_2, 1.0 - eps)
-
-    sol, reached_full = solve_theta_for_alpha(alpha, z0=s_lower, z1=s_upper, n_points=n_points)
-    if sol is None:
-        raise RuntimeError(f"solve_theta_for_alpha failed for alpha={alpha}, z0={s_lower}, z1={s_upper}")
-
-    zs = sol.t
-    thetas = sol.y[0]
-    zs = sol.t
-    for i in range(len(zs)):
-        if i>0.68*len(sol.t):
-            thetas[i]=0.0
-    m = len(zs) - 1
-    if m < 1:
-        return np.inf
-
-    dz = (s_upper - s_lower) / m
-    ln_thetas = np.zeros_like(thetas)
-    with np.errstate(divide='ignore'):
-        ln_thetas = np.log(np.clip(thetas, 1e-300, 1.0))  # clamp to avoid log(0)
-
-    def integral_theta_power(theta_val, ln_theta_val, t_lower):
-        if theta_val <= 0.0:
-            return 0.0
-        # Use closed form when theta ~ 1 to improve accuracy: ∫ (1/t) dt = -ln(t)
-        if abs(theta_val - 1.0) < 1e-12:
-            return -np.log(max(t_lower, eps))
-        integrand = lambda t: np.exp(t * ln_theta_val) / t
-        val, _ = quad(integrand, t_lower, 1.0 - eps, epsabs=1e-9, epsrel=1e-9, limit=200)
-        return val
-
-    # Precompute I_j = ∫_{t=zs[j]}^1 θ(z_j)^t / t dt for j=0..m
-    I_from_zj = np.zeros(m + 1)
-    for j in range(m ):
-        I_from_zj[j] = integral_theta_power(thetas[j+1], ln_thetas[j+1], zs[j])
-
-    # Suffix sums S[j] = Σ_{k=j}^m I_from_zj[k]
-    S = np.zeros(m + 2)
-    for j in range(m, -1, -1):
-        S[j] = S[j + 1] + I_from_zj[j]
-
-    min_alpha = np.inf
-    alpha_vals = []
-    theta_vals = []
-    for i in range(m):
-        zi = zs[i]
-        zip1 = zs[i + 1]
-        theta_zi = thetas[i]
-        if theta_zi <= 0.0:
-            continue
-
-        # Term 1: z_i * ∫_{z_{i+1}}^1 θ(z_i)^t / t dt
-        term1 = zi * integral_theta_power(theta_zi, ln_thetas[i], zip1)
-
-        # Term 2: ((λ2-λ1)/m) * Σ_{j=i+1}^m ∫_{z_j}^1 θ(z_j)^t / t dt
-        term2 = dz * S[i + 1]
-
-        if i>0.68*len(zs):
-            alpha_vals.append(1.0)
-            theta_vals.append(0.0)
-            break
-        new_alpha = (term1 + term2) / theta_zi
-        # if np.isfinite(new_alpha):
-        min_alpha = min(min_alpha, new_alpha)
-        alpha_vals.append(new_alpha)
-        theta_vals.append(theta_zi)
-    # plot alpha_vals for debugging
-    if len(alpha_vals)<len(zs)-1:
-        alpha_vals+=[0.0]*(len(zs)-1-len(alpha_vals))
-        theta_vals+=[0.0]*(len(zs)-1-len(theta_vals))
-    plt.plot(zs[:-1], alpha_vals,label=f'beta={beta}, alpha={alpha}')
-    plt.plot(zs[:-1], theta_vals,label=f'beta={beta}, theta(z)')
-    plt.xlabel('z')
-    plt.ylabel('alpha(z)')
-    plt.title(f'alpha(z) for beta={beta}, alpha={alpha}')
-    plt.xlim(0,1)
-    plt.ylim(-1,1)
-    plt.show()
-
-    # alpha_guess=alpha
-    # flag=True
-    # while flag:
-    #     alpha_guess-=1e-4
-    #     flag=False
-    #     for i in range(m):
-    #         zi = zs[i]
-    #         zip1 = zs[i + 1]
-    #         theta_zi = thetas[i]
-    #         if theta_zi <= 0.0:
-    #             continue
-
-    #         # Term 1: z_i * ∫_{z_{i+1}}^1 θ(z_i)^t / t dt
-    #         term1 = zi * integral_theta_power(theta_zi, ln_thetas[i], zip1)
-
-    #         # Term 2: ((λ2-λ1)/m) * Σ_{j=i+1}^m ∫_{z_j}^1 θ(z_j)^t / t dt
-    #         term2 = dz * S[i + 1]
-
-    #         if term1 + term2 < alpha_guess*theta_zi:
-    #             flag=True
-    #             print(f"beta={beta}, alpha_guess={alpha_guess}, i={i}, term1={term1}, term2={term2}, theta_zi={theta_zi} is less than alpha*theta_zi={alpha_guess*theta_zi}")
-    #             break
-    #         # terminate until all i satisfy the condition
-
-    return min_alpha
-
-def verifier_valid(beta, alpha):
-    lambda_1, lambda_2 = compute_lambdas(beta)
-    if lambda_1 is None or lambda_2 is None:
-        raise ValueError(f"compute_lambdas did not converge for beta={beta}")
-    eps = 1e-12
-    s_lower = max(lambda_1, eps)
-    s_upper = min(lambda_2, 1.0 - eps)
-    sol, reached_full = solve_theta_for_alpha(alpha, z0=s_lower, z1=s_upper, n_points=5000)
-    min_alpha=np.inf
-    # for [zi,z_i+1] in sol.t, check the condition until we reach z_i+1=lambda_2
-    min_alphas=[]
-    for i in range(len(sol.t)-1):
-        z0=sol.t[i]
-        theta_z0=sol.y[0][i]
-        theta_prime_z0=dtheta_dz(z0,[theta_z0],alpha)[0]
-        z1=sol.t[i+1]
-        theta_z1=sol.y[0][i+1]
-        theta_prime_z1=dtheta_dz(z1,[theta_z1],alpha)[0]
-        # test: the following case should be zero.
-        # new_min_alpha= np.exp(z0 * np.log(theta_z0)) / (z0 * (1.0 - np.exp((z0 - 1.0) * np.log(theta_z0))) / np.log(theta_z0) - alpha)-theta_prime_z0
-
-        new_min_alpha= np.exp(z0 * np.log(theta_z0)) / (z1 * (1.0 - np.exp((z0 - 1.0) * np.log(theta_z0))) / np.log(theta_z0)-alpha)-max(theta_prime_z0,theta_prime_z1)
-        # alpha_prime=alpha
-        # while True:
-        #     try:
-        #         # handle log near zero (theta ~ 1) using limit approximation
-        #         if abs(theta_z0-1.0)<1e-10:
-        #             denom= z0 * (1.0 - z0) - alpha_prime
-        #         else:
-        #             denom=z1 * (1.0 - np.exp((z0 - 1.0) * np.log(theta_z0))) / np.log(theta_z0)-alpha_prime
-        #         new_crit= np.exp(z0 * np.log(theta_z0)) / denom - max(theta_prime_z0,theta_prime_z1)
-        #     except Exception:
-        #         new_crit=-1.0
-        #     if new_crit>0:
-        #         break
-        #     alpha_prime-=1e-5
-        # new_min_alpha=alpha_prime
-    #     denom =  z * (1.0 - np.exp((z - 1.0) * np.log(theta))) / np.log(theta) - alpha
-    # numerator = np.exp(z * np.log(theta))
-        min_alpha=min(min_alpha, new_min_alpha)
-        min_alphas.append(new_min_alpha)
-    # # plot min_alphas for debugging
-    # plt.plot(sol.t[:-1], min_alphas)
-    # plt.xlabel('z')
-    # plt.ylabel('min_alpha(z)')
-    # plt.title(f'min_alpha(z) for beta={beta}, alpha={alpha}')
-    # plt.xlim(0,1)
-    # plt.ylim(max_alpha,min_alpha*1.5)
-    # plt.show()
-    return min_alpha
-
-def boundary_2(lambda2, threshold_lambda2,alpha):
-    # compute \lambda_2 \int_{\lambda_2}^{1} \frac{\theta(\lambda_2)^t}{t} dt- alpha * theta(lambda_2)
-    eps = 1e-12
-    t_lower = lambda2
-    t_upper = 1.0 - eps
-    if threshold_lambda2 <= 0.0:
-        return 0.0
-    integrand = lambda t: np.exp(t * np.log(threshold_lambda2)) / t
-    integral, _ = quad(integrand, t_lower, t_upper, epsabs=1e-9, epsrel=1e-9, limit=200)
-    return lambda2 * integral -alpha*threshold_lambda2
 
 def dtheta_dz(z, y, alpha):
     # denominator of theta' ODE
@@ -437,8 +270,25 @@ if __name__ == "__main__":
     # alpha_z_label_tuples=[ (alpha,0.2,0.8,True) for alpha in np.linspace(0.0,1.0,100)]
     # plot_batch(alpha_z_label_tuples=alpha_z_label_tuples, ylimit=(-20,20),num_points=5000)
 
-    for beta in [1e-6]:
+    betas=np.linspace(0.01, 1/np.e-2*1e-3, 30)
+    alphas=[]
+    for beta in betas:
         lambda1, lambda2 = compute_lambdas(beta)
+        alpha_low, alpha_high = search_optimal_alpha(z0=lambda1, z1=lambda2, alpha_start=0.001, alpha_end=1.0, max_iter=20, n_points=5000)
+        theta_lambda2,ineq_val= solve_init_theta_lambda2(lambda2,alpha_high)
+        error=0.001
+        threshold_vals=solve_de_recursively(beta,alpha_high-error,num_steps=300)
+        out_path = os.path.join(os.path.dirname(__file__), "valid_threshold_functions.txt")
+        with open(out_path, "a", encoding="utf-8") as f:
+            f.write(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha_high-error}, threshold_vals={threshold_vals}\n")
+        if threshold_vals[0]>1.0:
+            alphas.append(alpha_high-error)
+            print(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha_high-error}, threshold at lambda1={threshold_vals[0]}") 
+        else:
+            print("Warning: Threshold at lambda1 does not exceed 1.0. Skip this beta.")
+            alphas.append(0)
+        continue
+
         def search_stable(lambda2_val):
             alpha_low, alpha_high = search_optimal_alpha(z0=lambda1, z1=lambda2_val, alpha_start=0.01, alpha_end=1.0, max_iter=20, n_points=5000)
             sol, reached_full = solve_theta_for_alpha(alpha_high, z0=lambda1, z1=lambda2_val, n_points=5000)
@@ -456,11 +306,14 @@ if __name__ == "__main__":
         print(f"beta={beta}, lambda1={lambda1}, modified_lambda2={modified_lambda2}, modified_alpha={modified_alpha}")
         plt.show()
         exit()
-    plt.xlabel('z')
-    plt.ylabel('theta(z)')
-    plt.title('Optimal theta(z) for various beta values')
-    plt.legend()
+    plt.plot(betas, alphas, label='optimal solution for the differential equation')
+    plt.xlabel("beta")
+    plt.ylabel("alpha")
+    plt.title("Pareto curve of (beta, alpha)")
     plt.grid(True)
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
+    plt.legend()
     plt.show()
 
 
