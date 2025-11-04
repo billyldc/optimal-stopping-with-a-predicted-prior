@@ -57,8 +57,7 @@ def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
         plt.figure()
         plt.step(z_edges, y_steps, where='post')
         plt.xlabel('z')
-        plt.ylabel('theta(z)')
-        plt.title(f'Threshold function theta(z) for beta={beta}, alpha={alpha}')
+        plt.ylabel('θ(z)')
         plt.xlim(lambda1, lambda2)
         plt.grid(True)
         plt.show()
@@ -74,12 +73,13 @@ if __name__ == "__main__":
     """
 
     #Read alpha and beta values from alpha_betas.txt
-    alphas, betas = read_data(os.path.join(os.path.dirname(__file__), "Algorithm_MaxExp.txt"))
-
+    data = read_data(os.path.join(os.path.dirname(__file__), "Algorithm_MaxExp.txt"))
+    betas = [item[1] for item in data]
+    alphas = [item[0] for item in data]
     out_path = os.path.join(os.path.dirname(__file__), "valid_threshold_functions.txt")
 
     for beta, alpha in zip(betas, alphas):
-        ## test: plot theresholds
+        # test: plot theresholds
         # threshold_vals=solve_de_recursively(beta,alpha,num_steps=100)
         ## plot if needed
         # threshold_vals=solve_de_recursively(beta,alpha,num_steps=300,if_plot=True)
