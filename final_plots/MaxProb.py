@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from Algorithm_MaxProb import plot_algorithm_MaxProb, solve_γ, compute_α_for_MaxProb
 from Hardness_MaxProb import plot_hardness_MaxProb
 from helper import (
-    plot_trivial_algorithm_curve,
-    plot_trivial_hardness_curve,
+    plot_baseline_algorithm_curve,
+    plot_baseline_hardness_curve,
     setup_tradeoff_plot_MaxProb,
 )
 
@@ -16,11 +16,11 @@ def plot_tradeoff_MaxProb(n, K, algorithm_filename=None, hardness_filename=None)
     γ = solve_γ()
     α_star = compute_α_for_MaxProb(0, γ)
 
-    plot_trivial_algorithm_curve(ax, α_star)
-    plot_algorithm_MaxProb(ax, filename=algorithm_filename)
-    plot_hardness_MaxProb(ax, n, K, filename=hardness_filename)
-    plot_trivial_hardness_curve(ax, α_star)
-
+    plot_baseline_algorithm_curve(ax, α_star)
+    plot_baseline_hardness_curve(ax, α_star)
+    plot_algorithm_MaxProb(ax, label = "Theorem 2", filename=algorithm_filename)
+    plot_hardness_MaxProb(ax, n, K, label = "Theorem 3", filename=hardness_filename)
+    
     setup_tradeoff_plot_MaxProb(ax, α_star)
     plt.show()
 
@@ -29,5 +29,5 @@ if __name__ == "__main__":
 
     n, K = 30, 1024
     plot_tradeoff_MaxProb(
-        n, K, "Algorithm_MaxProb.txt", f"Hardness_MaxProb_n={n}_K={K}_old.txt"
+        n, K, "Algorithm_MaxProb.txt", f"Hardness_MaxProb_n={n}_K={K}.txt"
     )

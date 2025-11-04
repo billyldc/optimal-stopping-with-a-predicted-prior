@@ -4,7 +4,7 @@ from scipy.integrate import quad
 from scipy.optimize import root_scalar
 import matplotlib.pyplot as plt
 import os
-from helper import compute_λ, save_data, read_data, plot_tradeoff_curve
+from helper import compute_λ, save_data, read_data, plot_algorithm_curve
 
 
 def solve_γ():
@@ -30,7 +30,7 @@ def compute_α_for_MaxProb(β, γ):
     return β + double_integral
 
 
-def plot_algorithm_MaxProb(ax, density=0.0001, color="tab:orange", filename=None):
+def plot_algorithm_MaxProb(ax, density=0.0001, label = None, filename=None):
     if not os.path.exists(filename):
         γ = solve_γ()
         β_values = np.linspace(0, 1 / np.e, int(1 / np.e / density) + 2)
@@ -45,9 +45,11 @@ def plot_algorithm_MaxProb(ax, density=0.0001, color="tab:orange", filename=None
         arr = np.column_stack((α_values, β_values))
         save_data(arr, filename)
     else:
-        α_values, β_values = read_data(filename)
-    plot_tradeoff_curve(
-        ax, α_values, β_values, mode="algo", color=color, label="Our algorithm"
+        data = read_data(filename)
+        α_values = [row[0] for row in data]
+        β_values = [row[1] for row in data]
+    plot_algorithm_curve(
+        ax, α_values, β_values, label=label
     )
 
 
@@ -55,5 +57,4 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5, 4.5), dpi=500)
     plot_algorithm_MaxProb(ax, filename="Algorithm_MaxProb.txt")
     plt.tight_layout()
-    plt.legend()
     plt.show()

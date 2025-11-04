@@ -1,8 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from scipy.optimize import root_scalar
 from scipy.integrate import quad
 
+green = 'tab:green'
+red = 'tab:red'
+
+def lighten_color(color):
+    factor=0.45
+    color_rgb = mcolors.to_rgb(color)
+    return mcolors.to_hex([min(c + (1 - c) * factor, 1) for c in color_rgb])
+
+light_green = lighten_color(green)
+light_red = lighten_color(red)
 
 def compute_λ(β):
     """Compute lambda_1 and lambda_2 for a given β."""
@@ -47,26 +58,36 @@ def save_data(result, filename, header = "α β"):
 
 def read_data(filename):
     arr = np.loadtxt(filename, comments="#")
-    α_values = arr[:, 0].tolist()
-    β_values = arr[:, 1].tolist()
-    return α_values, β_values
+    data = arr.tolist()
+    return data
 
 
-def plot_tradeoff_curve(ax, α_values, β_values, mode, color, label=None):
-    if mode == "algo":
-        ax.plot(α_values, β_values, color=color, label=label)
-    elif mode == "hard":
-        ax.step(α_values, β_values, where="post", color=color, label=label)
-    else:
-        raise ValueError(f"Unknown mode {mode!r}. Use 'algo' or 'hard'.")
+def plot_algorithm_curve(ax, α_values, β_values, label=None):
+    ax.plot(α_values, β_values, color=green, linewidth=2, label=label)
 
-def plot_tangent():
-    return
-    '''
-        x0, y0 = 0.745, 0
+
+def plot_hardness_curve(ax, λ_values, α_values, β_values, label=None):
+    def find_intersection(l1, c1, l2, c2):
+        A = [[l1, 1 - l1], [l2, 1 - l2]]
+        B = [c1, c2]
+        intersection = np.linalg.solve(A, B)
+        return tuple(intersection)
+    L = λ_values
+    C = [λ_values[i]*α_values[i]+(1-λ_values[i])*β_values[i] for i in range(len(λ_values))]
+    points = []
+    points.append((1/np.e, β_values[0]))
+    for i in range(len(λ_values)-1):
+        points.append(find_intersection(L[i], C[i], L[i+1], C[i+1]))
+    points.append((α_values[-1], 0))
+    x_values, y_values = zip(*points)
+    ax.plot(x_values, y_values, color=red, label=label)
+
+
+def plot_tangent(ax, α_values, β_values, α_star):
+    x0, y0 = α_star, 0
     min_slope = None
     tangent_idx = None
-    for i, (x, y) in enumerate(zip(alpha_values, beta_values)):
+    for i, (x, y) in enumerate(zip(α_values, β_values)):
         if np.isnan(x):
             continue
         slope = (y - y0) / (x - x0) if x != x0 else np.inf
@@ -75,23 +96,30 @@ def plot_tangent():
             tangent_idx = i
 
     if tangent_idx is not None:
-        x1, y1 = alpha_values[tangent_idx], beta_values[tangent_idx]
-        plt.plot([x0, x1], [y0, y1], '--', label="tangent from (0.745, 0)",color='tab:blue')
-
-    '''
-
-
-def plot_trivial_algorithm_curve(ax, α_star, color="tab:blue"):
-    ax.plot([1 / np.e, α_star], [1 / np.e, 0], color=color, label="Trivial algorithm")
+        x1, y1 = α_values[tangent_idx], β_values[tangent_idx]
+        ax.plot([x0, x1], [y0, y1], label="Interpolation with Hill-Kertz", 
+                color=green, linestyle=':', linewidth=2)
+    return x1, y1
 
 
-def plot_trivial_hardness_curve(ax, α_star, color="tab:red"):
+def plot_baseline_algorithm_curve(ax, α_star):
+    ax.plot(
+        [1 / np.e, α_star], 
+        [1 / np.e, 0], 
+        color=light_green, 
+        linestyle=(0, (5, 5)),
+        label="Baseline algorithm"
+        )
+
+
+def plot_baseline_hardness_curve(ax, α_star):
     ax.plot(
         [1 / np.e, α_star, α_star],
         [1 / np.e, 1 / np.e, 0],
-        color=color,
-        label="Trivial hardness",
-    )
+        color=light_red,
+        linestyle=(0, (5, 5)),
+        label="Baseline hardness",
+        )
 
 
 def setup_threshold_plot(ax, λ1, λ2):
@@ -144,13 +172,13 @@ def setup_tradeoff_plot_MaxProb(ax, α_star):
     plt.tight_layout()
 
 
-def setup_tradeoff_plot_MaxExp(ax, α_star):
+def setup_tradeoff_plot_MaxExp(ax, α_star, x, y):
     ax.set_xlim(1 / np.e, 0.77)
     ax.set_ylim(0, 0.42)
 
-    xticks = [1 / np.e, α_star]
+    xticks = [1 / np.e, x, α_star]
     xtick_labels = [f"${val:.3f}$" for i, val in enumerate(xticks)]
-    yticks = [0, 1 / np.e]
+    yticks = [0, y, 1 / np.e]
     ytick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for val in yticks]
     ax.set_xticks(xticks)
     ax.set_xticklabels(xtick_labels)

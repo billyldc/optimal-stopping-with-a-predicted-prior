@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 from helper import (
     compute_α_star_MaxExp,
     read_data,
-    plot_tradeoff_curve,
+    plot_algorithm_curve,
     plot_tangent,
-    plot_trivial_algorithm_curve,
-    plot_trivial_hardness_curve,
+    plot_baseline_algorithm_curve,
+    plot_baseline_hardness_curve,
     setup_tradeoff_plot_MaxExp,
 )
 
@@ -17,13 +17,17 @@ def plot_tradeoff_MaxExp(filename=None):
 
     α_star = compute_α_star_MaxExp()
 
-    plot_trivial_algorithm_curve(ax, α_star)
-    α_values, β_values = read_data(filename)
-    plot_tradeoff_curve(ax, α_values, β_values, "algo", color = "tab:green", label="Our algorithm")
-    plot_tangent()
-    plot_trivial_hardness_curve(ax, α_star)
-
-    setup_tradeoff_plot_MaxExp(ax, α_star)
+    plot_baseline_algorithm_curve(ax, α_star)
+    plot_baseline_hardness_curve(ax, α_star)
+    
+    data = read_data(filename)
+    α_values = [row[0] for row in data]
+    β_values = [row[1] for row in data]
+    
+    plot_algorithm_curve(ax, α_values, β_values, label="Theorem 1")
+    x, y = plot_tangent(ax, α_values, β_values, α_star)
+    
+    setup_tradeoff_plot_MaxExp(ax, α_star, x, y)
     plt.show()
 
 
