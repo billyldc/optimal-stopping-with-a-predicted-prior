@@ -6,6 +6,8 @@ from scipy.integrate import quad
 import os
 import re
 import matplotlib.pyplot as plt
+from scipy.special import expi
+from scipy.integrate import dblquad
 
 # auxiliary functions
 def f_lambda(x):
@@ -32,31 +34,6 @@ def compute_lambdas(beta):
     lambda2 = root2.root if root2.converged else None
     return lambda1, lambda2
 
-def solve_init_theta_lambda2(lambda2,alpha):
-    """Solve the boundary condition at lambda2:
-
-    Solve for theta in the equation
-        lambda2 * \int_{lambda2}^{1} theta^t / t dt = alpha * theta
-    using a robust bisection on theta in (0, 1].
-
-    Returns (theta, residual) where residual is equation(theta).
-    """
-    def integrand(t, theta_val):
-        return np.exp( t * np.log(theta_val)) / t
-
-    def equation(theta):
-        integral_val, _ = quad(integrand, lambda2, 1, args=(theta,))
-        return lambda2 * integral_val - alpha * theta
-
-    root_low=0.0
-    root_high=1.0
-    for _it in range(50):
-        mid=0.5 * (root_low + root_high)
-        if equation(mid)<0:
-            root_high= 0.5 * (root_low + root_high)
-        else:
-            root_low= 0.5 * (root_low + root_high)
-    return root_low, equation(root_low)
 
 def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
     """Compute a feasible threshold function theta(z) on [lambda1, lambda2].
@@ -67,17 +44,22 @@ def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
     - if_plot: if True, plot the resulting step-function.
     """
     lambda1, lambda2 = compute_lambdas(beta)
-    theta_lambda2, _ = solve_init_theta_lambda2(lambda2, alpha)
     m=num_steps
     dz = (lambda2 - lambda1) / m
     threshold_vals=[1.0]*(m+1)
     for i in range(m,0,-1):
         z_ip1= lambda1 + i * dz
-        def integrand(t, theta_val):
+        def inner_integrand1(t, theta_val):
             return np.exp( t * np.log(theta_val)) / t
+        def inner_integrand2(t, theta_val,z_lower):
+            return np.exp( t * np.log(theta_val))*(t-z_lower) / t
         def equation(theta):
-            term1= z_ip1 * quad(integrand, z_ip1, 1, args=(theta,))[0]
-            term2= dz * sum(quad(integrand, lambda1 + j * dz, 1, args=(threshold_vals[j-1],))[0] for j in range(i+1,m+1))
+            # z_{i+1} \int_{z_{i+1}}^1 \frac{ \theta_i^t}{t} \,\dd t 
+            term1= z_ip1 * quad(inner_integrand1, z_ip1, 1, args=(theta,))[0]
+            # \sum_{j=i+1}^m \left[ \int_{z_{j}}^{z_{j+1}} \frac{t- z_j}{t} \,\dd t  {\threshold_j^*}^t  + (z_{j+1}-z_j) \int_{z_{j+1}}^1 \frac{{\threshold^*_j}^t}{t}  \,\dd t \right]
+            term2= sum(quad(inner_integrand2, (lambda1+(j-1)*dz), (lambda1+j*dz), args=(threshold_vals[j],(lambda1+(j-1)*dz),))[0]
+                       +quad(inner_integrand1, (lambda1+j*dz), 1, args=(threshold_vals[j],))[0]*dz 
+                       for j in range(i+1,m+1))
             return term1 + term2 - alpha * theta
         root_low=0.0
         root_high=2.0
@@ -97,7 +79,7 @@ def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
     y_steps = np.empty(m + 1)
     y_steps[:-1] = threshold_vals[1:]
     y_steps[-1] = threshold_vals[-1]
-    
+
     if if_plot:
         plt.figure()
         plt.step(z_edges, y_steps, where='post')
@@ -126,12 +108,16 @@ if __name__ == "__main__":
     betas = _extract("betas")
     alphas = _extract("alphas")
 
+    out_path = os.path.join(os.path.dirname(__file__), "valid_threshold_functions.txt")
+
     for beta, alpha in zip(betas, alphas):
-        # # test: plot theresholds
-        # threshold_vals=solve_de_recursively(beta,alpha,num_steps=100,if_plot=True)
-        threshold_vals=solve_de_recursively(beta,alpha,num_steps=300)
-        out_path = os.path.join(os.path.dirname(__file__), "valid_threshold_functions.txt")
+        # test: plot theresholds
+        # threshold_vals=solve_de_recursively(beta,alpha,num_steps=100)
+
+        threshold_vals=solve_de_recursively(beta,alpha,num_steps=300,if_plot=False)
         lambda1, lambda2 = compute_lambdas(beta)
+        # print(threshold_vals)
+        # exit(0)
         with open(out_path, "a", encoding="utf-8") as f:
             f.write(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha}, threshold_vals={threshold_vals}\n")
         if threshold_vals[0]>1.0:
