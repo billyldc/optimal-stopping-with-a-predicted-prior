@@ -8,7 +8,6 @@ import multiprocessing as mp
 import sys
 from helper import save_data, read_data, plot_tradeoff_curve
 from Algorithm_MaxProb import solve_γ, compute_α_for_MaxProb
-import time
 
 class LPsolver_MaxProb:
 
@@ -104,7 +103,6 @@ def evaluate_alpha_point(args):
 
 
 def compute_tradeoff_curve(n, masses, density, filename=None):
-    print("Start:", time.time())
     min_α, _ = LPsolver_MaxProb(n, masses, α=None, β=1 / np.e).solve()
     γ = solve_γ()
     max_α = compute_α_for_MaxProb(0, γ)
@@ -133,6 +131,8 @@ def compute_tradeoff_curve(n, masses, density, filename=None):
 
 def plot_hardness_MaxProb(ax, n, K, density=0.001, color="tab:green", filename=None):
     if not os.path.exists(filename):
+        print("Not found")
+        return
         masses = [1 / k for k in range(1, K + 1)]
         α_values, β_values = compute_tradeoff_curve(
             n, masses, density, filename=filename

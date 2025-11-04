@@ -123,7 +123,7 @@ def setup_threshold_plot(ax, λ1, λ2):
 
 def setup_tradeoff_plot_MaxProb(ax, α_star):
     ax.set_xlim(1 / np.e, 0.6)
-    ax.set_ylim(0, 0.4)
+    ax.set_ylim(0, 0.42)
 
     xticks = [1 / np.e, α_star]
     xtick_labels = [f"${val:.3f}$" for i, val in enumerate(xticks)]
@@ -146,7 +146,7 @@ def setup_tradeoff_plot_MaxProb(ax, α_star):
 
 def setup_tradeoff_plot_MaxExp(ax, α_star):
     ax.set_xlim(1 / np.e, 0.77)
-    ax.set_ylim(0, 0.4)
+    ax.set_ylim(0, 0.42)
 
     xticks = [1 / np.e, α_star]
     xtick_labels = [f"${val:.3f}$" for i, val in enumerate(xticks)]
