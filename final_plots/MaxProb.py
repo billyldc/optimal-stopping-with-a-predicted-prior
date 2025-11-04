@@ -28,7 +28,6 @@ def plot_tradeoff_MaxProb(n, K, algorithm_filename=None, hardness_filename=None)
 if __name__ == "__main__":
 
     n, K = 30, 1024
-
     plot_tradeoff_MaxProb(
-        n, K, "Algorithm_MaxProb.txt", f"Hardness_MaxProb_n={n}_K={K}.txt"
+        n, K, "Algorithm_MaxProb.txt", f"Hardness_MaxProb_n={n}_K={K}_old.txt"
     )

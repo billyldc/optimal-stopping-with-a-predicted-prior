@@ -1,17 +1,16 @@
 import numpy as np
 from itertools import product
 from gurobipy import *
-from json import loads
 import os
 import matplotlib.pyplot as plt
 import multiprocessing as mp
-import sys
 from helper import save_data, read_data, plot_tradeoff_curve
 from Algorithm_MaxProb import solve_γ, compute_α_for_MaxProb
 
+
 class LPsolver_MaxProb:
 
-    def __init__(self, n, masses, α=None, β=None, env=None):
+    def __init__(self, n, masses, λ, env=None):
 
         if not all(m >= 0 for m in masses):
             raise ValueError("All relative masses must be nonnegative.")
@@ -24,7 +23,7 @@ class LPsolver_MaxProb:
         else:
             self.model = Model()
         self.model.Params.OutputFlag = 0
-        self.build(α, β)
+        self.build(λ)
 
     def F(self, l):
         return np.sum([self.f[i] for i in range(1, l + 1)])
@@ -34,7 +33,7 @@ class LPsolver_MaxProb:
             return 1 if l == 1 else 0
         return self.F(l) ** t - self.F(l - 1) ** t
 
-    def build(self, α, β):
+    def build(self, λ):
 
         self.model.setParam("MIPGap", 1e-9)
 
@@ -43,12 +42,7 @@ class LPsolver_MaxProb:
         )
         self.α = self.model.addVar(name="α", lb=0, ub=1)
         self.β = self.model.addVar(name="β", lb=0, ub=1)
-        if α is not None:
-            self.model.setObjective(self.β, GRB.MAXIMIZE)
-            self.model.addConstr(self.α >= α, name="α_lower_bound")
-        elif β is not None:
-            self.model.setObjective(self.α, GRB.MAXIMIZE)
-            self.model.addConstr(self.β >= β, name="β_lower_bound")
+        self.model.setObjective(λ*self.α + (1-λ)*self.β, GRB.MAXIMIZE)
 
         for l in range(1, self.K + 1):
             self.model.addConstr(self.y[0, l] == 1, name=f"REJ_{(0,l)} == 1")
@@ -94,48 +88,43 @@ def init_worker():
     _worker_env.start()
 
 
-def evaluate_alpha_point(args):
+def evaluate_λ_point(args):
     global _worker_env
-    n, masses, α = args
-    model = LPsolver_MaxProb(n, masses, α=α, β=None, env=_worker_env)
+    n, masses, λ = args
+    model = LPsolver_MaxProb(n, masses, λ, env=_worker_env)
     α, β = model.solve()
-    return α, β
+    return λ, α, β
 
 
-def compute_tradeoff_curve(n, masses, density, filename=None):
-    min_α, _ = LPsolver_MaxProb(n, masses, α=None, β=1 / np.e).solve()
-    γ = solve_γ()
-    max_α = compute_α_for_MaxProb(0, γ)
+def compute_tradeoff_curve(n, masses, num_points, filename=None):
 
-    if min_α > max_α:
-        return [], []
-
-    α_values = np.linspace(min_α, max_α, int((max_α - min_α) / density) + 2)
-    np.savetxt("Hardness_alpha_to_solve.txt", α_values, fmt="%.12f", header="α")
-    print("α_values now confirmed:", time.time())
-
-    args_list = [(n, masses, α) for α in α_values]
+    args_list = [(n, masses, i/num_points) for i in range(num_points+1) if i%5!=0]
 
     n_tasks = len(args_list)
-    n_workers = min(mp.cpu_count(), n_tasks)
-    with mp.Pool(processes=n_workers, initializer=init_worker) as pool:
-        result = pool.map(evaluate_alpha_point, args_list)
+    n_workers = 3
+    split = [i for i in range(28, n_tasks, 3)]
+    result = []
+    for i in range(len(split)):
+        with mp.Pool(processes=n_workers, initializer=init_worker) as pool:
+            partial = pool.map(evaluate_λ_point, args_list[split[i]:(split[i+1] if i+1 <= len(split)-1 else n_tasks)])
+        print(partial)
+        result.extend(partial)
+        save_data(np.array(partial), f"output_continue/lambda_Hardness_MaxProb_n={n}_K={K}_i={split[i]}_to_{(split[i+1] if i+1 <= len(split)-1 else n_tasks)}.txt")
 
     if filename is not None:
-        save_data(result, filename)
+        arr = np.array(result)
+        save_data(arr, filename, header = "λ α β")
 
-    α_values, β_values = zip(*[(α, β) for α, β in result if α is not None])
+    _, α_values, β_values = zip(*[(λ, α, β) for λ, α, β in result if α is not None])
 
     return α_values, β_values
 
 
-def plot_hardness_MaxProb(ax, n, K, density=0.001, color="tab:green", filename=None):
+def plot_hardness_MaxProb(ax, n, K, num_points = 100, color="tab:green", filename=None):
     if not os.path.exists(filename):
-        print("Not found")
-        return
         masses = [1 / k for k in range(1, K + 1)]
         α_values, β_values = compute_tradeoff_curve(
-            n, masses, density, filename=filename
+            n, masses, num_points, filename=filename
         )
     else:
         α_values, β_values = read_data(filename)
@@ -146,9 +135,10 @@ def plot_hardness_MaxProb(ax, n, K, density=0.001, color="tab:green", filename=N
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5, 4.5), dpi=500)
-    n, K = 32, 1024
+    n, K = 3,3#30, 1024
     plot_hardness_MaxProb(
-        ax, n, K, filename=f"Hardness_MaxProb_n={n}_K={K}.txt"
+        ax, n, K, num_points = 100,
+        filename=f"lambda_Hardness_MaxProb_n={n}_K={K}.txt"
     )
     plt.tight_layout()
     plt.legend()

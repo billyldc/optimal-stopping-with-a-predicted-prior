@@ -53,7 +53,7 @@ def plot_algorithm_MaxProb(ax, density=0.0001, color="tab:orange", filename=None
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5, 4.5), dpi=500)
-    plot_algorithm_MaxProb(ax, filename="Algo_MaxProb.txt")
+    plot_algorithm_MaxProb(ax, filename="Algorithm_MaxProb.txt")
     plt.tight_layout()
     plt.legend()
     plt.show()
