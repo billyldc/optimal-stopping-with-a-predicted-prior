@@ -3,34 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import root_scalar
 from scipy.integrate import quad
 import os
-from helper import read_data
-
-
-# auxiliary functions
-def f_lambda(x):
-    # Compute lambda1 and lambda2 for beta values from 0 to 1/e
-    if x <= 0 or x >= 1:
-        return float("inf")
-    return -x * np.log(x)
-
-
-def compute_lambdas(beta):
-    if beta < 0 or beta > 1 / np.e:
-        raise ValueError("Beta must be in the range [0, 1/e]")
-    if beta == 0:
-        return 0.0, 1.0
-
-    # Small root (lambda1) in (0, 1/e)
-    root1 = root_scalar(lambda x: f_lambda(x) - beta, bracket=(1e-12, 1 / np.e), method="brentq")
-    lambda1 = root1.root if root1.converged else None
-
-    # Large root (lambda2) in interval (1/e, 1)
-    root2 = root_scalar(
-        lambda x: f_lambda(x) - beta, bracket=(1 / np.e, 1 - 1e-10), method="brentq"
-    )
-    lambda2 = root2.root if root2.converged else None
-    return lambda1, lambda2
-
+from helper import read_data,compute_λ
 
 def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
     """Compute a feasible threshold function theta(z) on [lambda1, lambda2].
@@ -40,7 +13,7 @@ def solve_de_recursively(beta,alpha,num_steps=100,if_plot=False):
     - num_steps: number of uniform subdivisions between lambda1 and lambda2.
     - if_plot: if True, plot the resulting step-function.
     """
-    lambda1, lambda2 = compute_lambdas(beta)
+    lambda1, lambda2 = compute_λ(beta)
     m=num_steps
     dz = (lambda2 - lambda1) / m
     threshold_vals=[1.0]*(m+1)
@@ -112,9 +85,7 @@ if __name__ == "__main__":
         # threshold_vals=solve_de_recursively(beta,alpha,num_steps=300,if_plot=True)
 
         threshold_vals=solve_de_recursively(beta,alpha,num_steps=300,if_plot=False)
-        lambda1, lambda2 = compute_lambdas(beta)
-        # print(threshold_vals)
-        # exit(0)
+        lambda1, lambda2 = compute_λ(beta)
         with open(out_path, "a", encoding="utf-8") as f:
             f.write(f"beta={beta}, lambda1={lambda1}, lambda2={lambda2}, alpha={alpha}, threshold_vals={threshold_vals}\n")
         if threshold_vals[0]>1.0:
