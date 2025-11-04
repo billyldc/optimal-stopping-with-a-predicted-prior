@@ -23,6 +23,9 @@ def plot_tradeoff_MaxExp(filename=None):
     data = read_data(filename)
     α_values = [row[0] for row in data]
     β_values = [row[1] for row in data]
+    # add a small offset to α_values for better visualization
+    α_values = np.insert(α_values, 0, α_values[0] )
+    β_values = np.insert(β_values, 0, 0.0)
     
     plot_algorithm_curve(ax, α_values, β_values, label="Theorem 1")
     x, y = plot_tangent(ax, α_values, β_values, α_star)
