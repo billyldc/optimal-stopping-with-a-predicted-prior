@@ -30,7 +30,7 @@ def compute_α_for_MaxProb(β, γ):
     return β + double_integral
 
 
-def plot_algorithm_MaxProb(ax, density=0.0001, label = None, filename=None):
+def plot_algorithm_MaxProb(ax, density=0.0001, label=None, filename=None):
     if not os.path.exists(filename):
         γ = solve_γ()
         β_values = np.linspace(0, 1 / np.e, int(1 / np.e / density) + 2)
@@ -42,15 +42,15 @@ def plot_algorithm_MaxProb(ax, density=0.0001, label = None, filename=None):
                 print(f"Failed to compute α for β={β}")
                 α_values.append(np.nan)
                 continue
+        α_values = np.append(α_values, 0)
+        β_values = np.append(β_values, 1 / np.e)
         arr = np.column_stack((α_values, β_values))
         save_data(arr, filename)
     else:
         data = read_data(filename)
         α_values = [row[0] for row in data]
         β_values = [row[1] for row in data]
-    plot_algorithm_curve(
-        ax, α_values, β_values, label=label
-    )
+    plot_algorithm_curve(ax, α_values, β_values, max(α_values), label=label)
 
 
 if __name__ == "__main__":

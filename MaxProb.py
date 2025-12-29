@@ -18,10 +18,12 @@ def plot_tradeoff_MaxProb(n, K, algorithm_filename=None, hardness_filename=None)
 
     plot_baseline_algorithm_curve(ax, α_star)
     plot_baseline_hardness_curve(ax, α_star)
-    plot_algorithm_MaxProb(ax, label = "Theorem 2", filename=algorithm_filename)
-    plot_hardness_MaxProb(ax, n, K, label = "Theorem 3", filename=hardness_filename)
-    
-    setup_tradeoff_plot_MaxProb(ax, α_star)
+    plot_algorithm_MaxProb(ax, label="Theorem 2", filename=algorithm_filename)
+    plot_hardness_MaxProb(
+        ax, n, K, α_star, label="Theorem 3", filename=hardness_filename
+    )
+
+    setup_tradeoff_plot_MaxProb(ax, α_star,)
     plt.show()
 
 

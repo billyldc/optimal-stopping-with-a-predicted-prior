@@ -21,3 +21,4 @@ local_test*
 
 // profile ignore
 mathematica code_ldc/
+*.pyc

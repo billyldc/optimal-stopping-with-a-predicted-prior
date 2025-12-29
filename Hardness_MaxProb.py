@@ -41,7 +41,7 @@ class LPsolver_MaxProb:
         )
         self.α = self.model.addVar(name="α", lb=0, ub=1)
         self.β = self.model.addVar(name="β", lb=0, ub=1)
-        self.model.setObjective(λ*self.α + (1-λ)*self.β, GRB.MAXIMIZE)
+        self.model.setObjective(λ * self.α + (1 - λ) * self.β, GRB.MAXIMIZE)
 
         for l in range(1, self.K + 1):
             self.model.addConstr(self.y[0, l] == 1, name=f"REJ_{(0,l)} == 1")
@@ -97,28 +97,30 @@ def evaluate_λ_point(args):
 
 def compute_tradeoff_curve(n, masses, num_points, filename=None):
 
-    λ_values = [i/num_points for i in range(num_points+1)]
+    λ_values = [i / num_points for i in range(num_points + 1)]
     args_list = [(n, masses, λ) for λ in λ_values]
     n_tasks = len(args_list)
-    n_workers = 1 # set to 4 in our experiment
+    n_workers = 1  # set to 4 in our experiment
     result = []
-    
+
     for i in range(0, n_tasks, n_workers):
-        chunk = args_list[i:i + n_workers]
+        chunk = args_list[i : i + n_workers]
         with mp.Pool(processes=n_workers, initializer=init_worker) as pool:
             partial = pool.map(evaluate_λ_point, chunk)
         result.extend(partial)
 
     if filename is not None:
         arr = np.array(result)
-        save_data(arr, filename, header = "λ α β")
+        save_data(arr, filename, header="λ α β")
 
-    λ_values, α_values, β_values = zip(*[(λ, α, β) for λ, α, β in result if α is not None])
+    λ_values, α_values, β_values = zip(
+        *[(λ, α, β) for λ, α, β in result if α is not None]
+    )
 
     return λ_values, α_values, β_values
 
 
-def plot_hardness_MaxProb(ax, n, K, num_points = 100, label=None, filename=None):
+def plot_hardness_MaxProb(ax, n, K, α_star, num_points=100, label=None, filename=None):
     if not os.path.exists(filename):
         masses = [1 / k for k in range(1, K + 1)]
         λ_values, α_values, β_values = compute_tradeoff_curve(
@@ -129,17 +131,14 @@ def plot_hardness_MaxProb(ax, n, K, num_points = 100, label=None, filename=None)
         λ_values = [row[0] for row in data]
         α_values = [row[1] for row in data]
         β_values = [row[2] for row in data]
-    plot_hardness_curve(
-        ax, λ_values, α_values, β_values, label=label
-    )
+    plot_hardness_curve(ax, λ_values, α_values, β_values, α_star, label=label)
 
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5, 4.5), dpi=500)
     n, K = 30, 1024
     plot_hardness_MaxProb(
-        ax, n, K, num_points = 100,
-        filename=f"Hardness_MaxProb_n={n}_K={K}.txt"
+        ax, n, K, num_points=100, filename=f"Hardness_MaxProb_n={n}_K={K}.txt"
     )
     plt.tight_layout()
     plt.show()
