@@ -8,6 +8,7 @@ from helper import (
     plot_tangents,
     plot_baseline_algorithm_curve,
     plot_baseline_hardness_curve,
+    shade_baseline,
     setup_tradeoff_plot_MaxExp,
 )
 
@@ -45,14 +46,7 @@ def plot_tradeoff_MaxExp(filename=None):
 
     plot_algorithm_curve(ax, α_trunc, β_trunc, α_star, label="Theorem 1")
     x, y = plot_tangents(ax, α_trunc, β_trunc, α_star)
-
-    α = [0, 1 / np.e, α_star]
-    β = [1 / np.e, 1 / np.e, 0]
-    ax.fill_between(α, β, 0, color=pale_green)
-
-    α = [0, α_star, α_star, 1]
-    β = [1 / np.e, 1 / np.e, 0, 0]
-    ax.fill_between(α, β, 1, color=pale_red)
+    shade_baseline(ax, α_star)
 
     setup_tradeoff_plot_MaxExp(ax, α_star, x, y)
     plt.show()

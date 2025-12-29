@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.lines import Line2D
 from scipy.optimize import root_scalar
 from scipy.integrate import quad
 
@@ -163,7 +164,6 @@ def plot_tangents(ax, α_values, β_values, α_star):
         # label="Interpolation with Dynkin",
     )
     ax.fill_between([x0b, x2], [y0b, y2], 0, color=light_green)
-    ax.plot([0, 1 / np.e], [1 / np.e, 1 / np.e], linewidth=1, color=green)
 
     return [x1, x2], [y1, y2]
 
@@ -172,13 +172,14 @@ def plot_baseline_algorithm_curve(ax, α_star):
     α = [0, 1 / np.e, α_star]
     β = [1 / np.e, 1 / np.e, 0]
     ax.plot(
-        α,
-        β,
+        [0, 1 / np.e],
+        [1 / np.e, 1 / np.e],
         color=green,
         linewidth=1,
-        linestyle=(0, (6, 4)),
+        linestyle=(0, (5, 5)),
         label="Baseline algorithm",
     )
+    ax.plot(α, β, color=green, linewidth=1, linestyle=(5, (5, 5)))
 
 
 def plot_baseline_hardness_curve(ax, α_star):
@@ -189,9 +190,19 @@ def plot_baseline_hardness_curve(ax, α_star):
         β,
         color=red,
         linewidth=1,
-        linestyle=(0, (6, 4)),
+        linestyle=(0, (5, 5)),
         label="Baseline hardness",
     )
+
+
+def shade_baseline(ax, α_star):
+    α = [0, 1 / np.e, α_star]
+    β = [1 / np.e, 1 / np.e, 0]
+    ax.fill_between(α, β, 0, color=pale_green)
+
+    α = [0, α_star, α_star, 1]
+    β = [1 / np.e, 1 / np.e, 0, 0]
+    ax.fill_between(α, β, 1, color=pale_red)
 
 
 def setup_threshold_plot(ax, λ1, λ2):

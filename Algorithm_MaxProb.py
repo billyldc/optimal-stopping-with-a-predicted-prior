@@ -42,8 +42,6 @@ def plot_algorithm_MaxProb(ax, density=0.0001, label=None, filename=None):
                 print(f"Failed to compute α for β={β}")
                 α_values.append(np.nan)
                 continue
-        α_values = np.append(α_values, 0)
-        β_values = np.append(β_values, 1 / np.e)
         arr = np.column_stack((α_values, β_values))
         save_data(arr, filename)
     else:
