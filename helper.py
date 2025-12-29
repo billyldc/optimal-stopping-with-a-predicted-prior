@@ -69,7 +69,7 @@ def read_data(filename):
 
 
 def plot_algorithm_curve(ax, α_values, β_values, α_star, label=None):
-    ax.plot(α_values, β_values, color=green, linewidth=2, label=label)
+    ax.plot(α_values, β_values, color=green, linewidth=1, label=label)
     α = [0, 1 / np.e, α_star]
     β = [1 / np.e, 1 / np.e, 0]
     β_interp = np.interp(α_values, α, β)
@@ -104,36 +104,36 @@ def plot_hardness_curve(ax, λ_values, α_values, β_values, α_star, label=None
     ax.fill_between(x_values_limited, y_values_limited, y_max, color=light_red)
 
 
-def find_tangent(x0, y0, α_values, β_values, mode="min"):
+def find_tangent(x0, y0, α_values, β_values, mode="robust"):
     """
     Find the tangent point on the curve (α_values, β_values)
     from the base point (x0, y0).
-
-    mode = "min" → steepest downward tangent
-    mode = "max" → steepest upward tangent
     """
     best_slope = None
     best_idx = None
 
-    for i, (x, y) in enumerate(zip(α_values, β_values)):
-        if np.isnan(x):
-            continue
-
-        slope = (y - y0) / (x - x0) if x != x0 else np.inf
-
-        if best_slope is None:
-            best_slope = slope
-            best_idx = i
-            continue
-
-        if mode == "min" and slope < best_slope:
-            best_slope = slope
-            best_idx = i
-        elif mode == "max" and slope > best_slope:
-            best_slope = slope
-            best_idx = i
-
-    return α_values[best_idx], β_values[best_idx]
+    if mode == "robust":
+        curve = zip(α_values[::-1], β_values[::-1])
+        for i, (x, y) in enumerate(curve):
+            if np.isnan(x):
+                continue
+            slope = (y - y0) / (x - x0) if x != x0 else np.inf
+            if (best_slope is None and slope != np.inf) or (
+                best_slope is not None and slope >= best_slope
+            ):
+                best_slope = slope
+                best_idx = i
+        return (α_values[::-1])[best_idx], (β_values[::-1])[best_idx]
+    else:
+        curve = zip(α_values, β_values)
+        for i, (x, y) in enumerate(curve):
+            if np.isnan(x):
+                continue
+            slope = (y - y0) / (x - x0) if x != x0 else np.inf
+            if best_slope is None or slope < best_slope:
+                best_slope = slope
+                best_idx = i
+        return α_values[best_idx], β_values[best_idx]
 
 
 def plot_tangents(ax, α_values, β_values, α_star):
@@ -147,13 +147,13 @@ def plot_tangents(ax, α_values, β_values, α_star):
     # 1. Tangent from (α_star, 0)
     # -----------------------------
     x0a, y0a = α_star, 0
-    x1, y1 = find_tangent(x0a, y0a, α_values, β_values, mode="min")
+    x1, y1 = find_tangent(x0a, y0a, α_values, β_values, mode="consistent")
     ax.plot(
         [x0a, x1],
         [y0a, y1],
         color=green,
         linestyle=":",
-        linewidth=2,
+        linewidth=1,
         label="Interpolation with Hill-Kertz",
     )
 
@@ -167,18 +167,19 @@ def plot_tangents(ax, α_values, β_values, α_star):
     # 2. Tangent from (1/e, 1/e)
     # -----------------------------
     x0b, y0b = 1 / np.e, 1 / np.e
-    x2, y2 = find_tangent(x0b, y0b, α_values, β_values, mode="max")
+    x2, y2 = find_tangent(x0b, y0b, α_values, β_values, mode="robust")
     ax.plot(
         [x0b, x2],
         [y0b, y2],
         color=green,
         linestyle="--",
-        linewidth=2,
+        linewidth=1,
         label="Interpolation with Dynkin",
     )
 
     β_interp2 = np.interp([x0b, x2], α_env, β_env)
     ax.fill_between([x0b, x2], [y0b, y2], β_interp2, color=light_green)
+    ax.plot([0, 1 / np.e], [1 / np.e, 1 / np.e], linewidth=1, color=green)
 
     return [x1, x2], [y1, y2]
 
@@ -203,7 +204,7 @@ def plot_tangents(ax, α_values, β_values, α_star):
 #             label="Interpolation with Hill-Kertz",
 #             color=green,
 #             linestyle=":",
-#             linewidth=2,
+#             linewidth=1,
 #         )
 #     α = [0, 1 / np.e, α_star]
 #     β = [1 / np.e, 1 / np.e, 0]
@@ -219,6 +220,7 @@ def plot_baseline_algorithm_curve(ax, α_star):
         α,
         β,
         color=green,
+        linewidth=1,
         linestyle=(0, (3, 3)),
         label="Baseline algorithm",
     )
@@ -232,6 +234,7 @@ def plot_baseline_hardness_curve(ax, α_star):
         α,
         β,
         color=red,
+        linewidth=1,
         linestyle=(0, (3, 3)),
         label="Baseline hardness",
     )
@@ -295,8 +298,9 @@ def setup_tradeoff_plot_MaxProb(ax, α_star):
 def setup_tradeoff_plot_MaxExp(ax, α_star, x, y):
     ax.set_xlim(0, 0.77)
     ax.set_ylim(0, 0.41)
-
-    xticks = [0, 1 / np.e, *x, α_star]
+    print(x)
+    print(y)
+    xticks = [0, 1 / np.e, x[0], α_star]
     xtick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for val in xticks]
     yticks = [0, *y, 1 / np.e]
     ytick_labels = [

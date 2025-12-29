@@ -27,8 +27,9 @@ def plot_tradeoff_MaxExp(filename=None):
     # add a small offset to α_values for better visualization
     α_values = np.insert(α_values, 0, α_values[0])
     β_values = np.insert(β_values, 0, 0.0)
+
     α_cut = 1 / np.e
-    β_cut = np.interp(α_cut, α_values, β_values)
+    β_cut = np.interp(α_cut, α_values[::-1], β_values[::-1])
     mask = α_values >= α_cut
     α_trunc = np.append(α_values[mask], α_cut)
     β_trunc = np.append(β_values[mask], β_cut)
