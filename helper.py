@@ -104,33 +104,112 @@ def plot_hardness_curve(ax, λ_values, α_values, β_values, α_star, label=None
     ax.fill_between(x_values_limited, y_values_limited, y_max, color=light_red)
 
 
-def plot_tangent(ax, α_values, β_values, α_star):
-    x0, y0 = α_star, 0
-    min_slope = None
-    tangent_idx = None
+def find_tangent(x0, y0, α_values, β_values, mode="min"):
+    """
+    Find the tangent point on the curve (α_values, β_values)
+    from the base point (x0, y0).
+
+    mode = "min" → steepest downward tangent
+    mode = "max" → steepest upward tangent
+    """
+    best_slope = None
+    best_idx = None
+
     for i, (x, y) in enumerate(zip(α_values, β_values)):
         if np.isnan(x):
             continue
-        slope = (y - y0) / (x - x0) if x != x0 else np.inf
-        if min_slope is None or slope < min_slope:
-            min_slope = slope
-            tangent_idx = i
 
-    if tangent_idx is not None:
-        x1, y1 = α_values[tangent_idx], β_values[tangent_idx]
-        ax.plot(
-            [x0, x1],
-            [y0, y1],
-            label="Interpolation with Hill-Kertz",
-            color=green,
-            linestyle=":",
-            linewidth=2,
-        )
-    α = [0, 1 / np.e, α_star]
-    β = [1 / np.e, 1 / np.e, 0]
-    β_interp = np.interp([x0, x1], α, β)
-    ax.fill_between([x0, x1], [y0, y1], β_interp, color=light_green)
-    return x1, y1
+        slope = (y - y0) / (x - x0) if x != x0 else np.inf
+
+        if best_slope is None:
+            best_slope = slope
+            best_idx = i
+            continue
+
+        if mode == "min" and slope < best_slope:
+            best_slope = slope
+            best_idx = i
+        elif mode == "max" and slope > best_slope:
+            best_slope = slope
+            best_idx = i
+
+    return α_values[best_idx], β_values[best_idx]
+
+
+def plot_tangents(ax, α_values, β_values, α_star):
+    """
+    Plot both tangents:
+    - from (α_star, 0) using minimum slope
+    - from (1/e, 1/e) using maximum slope
+    """
+
+    # -----------------------------
+    # 1. Tangent from (α_star, 0)
+    # -----------------------------
+    x0a, y0a = α_star, 0
+    x1, y1 = find_tangent(x0a, y0a, α_values, β_values, mode="min")
+    ax.plot(
+        [x0a, x1],
+        [y0a, y1],
+        color=green,
+        linestyle=":",
+        linewidth=2,
+        label="Interpolation with Hill-Kertz",
+    )
+
+    # Shade against HK envelope
+    α_env = [0, 1 / np.e, α_star]
+    β_env = [1 / np.e, 1 / np.e, 0]
+    β_interp = np.interp([x0a, x1], α_env, β_env)
+    ax.fill_between([x0a, x1], [y0a, y1], β_interp, color=light_green)
+
+    # -----------------------------
+    # 2. Tangent from (1/e, 1/e)
+    # -----------------------------
+    x0b, y0b = 1 / np.e, 1 / np.e
+    x2, y2 = find_tangent(x0b, y0b, α_values, β_values, mode="max")
+    ax.plot(
+        [x0b, x2],
+        [y0b, y2],
+        color=green,
+        linestyle="--",
+        linewidth=2,
+        label="Interpolation with Dynkin",
+    )
+
+    β_interp2 = np.interp([x0b, x2], α_env, β_env)
+    ax.fill_between([x0b, x2], [y0b, y2], β_interp2, color=light_green)
+
+    return [x1, x2], [y1, y2]
+
+
+# def plot_tangent(ax, α_values, β_values, α_star):
+#     x0, y0 = α_star, 0
+#     min_slope = None
+#     tangent_idx = None
+#     for i, (x, y) in enumerate(zip(α_values, β_values)):
+#         if np.isnan(x):
+#             continue
+#         slope = (y - y0) / (x - x0) if x != x0 else np.inf
+#         if min_slope is None or slope < min_slope:
+#             min_slope = slope
+#             tangent_idx = i
+
+#     if tangent_idx is not None:
+#         x1, y1 = α_values[tangent_idx], β_values[tangent_idx]
+#         ax.plot(
+#             [x0, x1],
+#             [y0, y1],
+#             label="Interpolation with Hill-Kertz",
+#             color=green,
+#             linestyle=":",
+#             linewidth=2,
+#         )
+#     α = [0, 1 / np.e, α_star]
+#     β = [1 / np.e, 1 / np.e, 0]
+#     β_interp = np.interp([x0, x1], α, β)
+#     ax.fill_between([x0, x1], [y0, y1], β_interp, color=light_green)
+#     return x1, y1
 
 
 def plot_baseline_algorithm_curve(ax, α_star):
@@ -217,10 +296,18 @@ def setup_tradeoff_plot_MaxExp(ax, α_star, x, y):
     ax.set_xlim(0, 0.77)
     ax.set_ylim(0, 0.41)
 
-    xticks = [0, 1 / np.e, x, α_star]
-    xtick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for i, val in enumerate(xticks)]
-    yticks = [0, y, 1 / np.e]
-    ytick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for val in yticks]
+    xticks = [0, 1 / np.e, *x, α_star]
+    xtick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for val in xticks]
+    yticks = [0, *y, 1 / np.e]
+    ytick_labels = [
+        (
+            ""
+            if 0.01 > np.abs(val - 1 / np.e) > 1e-6
+            else ("0" if val == 0 else f"${val:.3f}$")
+        )
+        for val in yticks
+    ]
+
     ax.set_xticks(xticks)
     ax.set_xticklabels(xtick_labels)
     ax.set_yticks(yticks)
