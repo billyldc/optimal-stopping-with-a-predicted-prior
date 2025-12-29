@@ -23,7 +23,18 @@ def plot_tradeoff_MaxProb(n, K, algorithm_filename=None, hardness_filename=None)
         ax, n, K, α_star, label="Theorem 3", filename=hardness_filename
     )
 
-    setup_tradeoff_plot_MaxProb(ax, α_star,)
+    α = [0, 1 / np.e, α_star]
+    β = [1 / np.e, 1 / np.e, 0]
+    ax.fill_between(α, β, 0, color=pale_green)
+
+    α = [0, α_star, α_star, 1]
+    β = [1 / np.e, 1 / np.e, 0, 0]
+    ax.fill_between(α, β, 1, color=pale_red)
+
+    setup_tradeoff_plot_MaxProb(
+        ax,
+        α_star,
+    )
     plt.show()
 
 
