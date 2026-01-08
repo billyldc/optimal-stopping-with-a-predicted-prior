@@ -18,6 +18,8 @@ light_red = lighten_color(red, 0.5)
 pale_green = lighten_color(green, 0.8)
 pale_red = lighten_color(red, 0.8)
 
+x_min = 0.34
+
 
 def compute_λ(β):
     """Compute lambda_1 and lambda_2 for a given β."""
@@ -205,6 +207,42 @@ def shade_baseline(ax, α_star):
     ax.fill_between(α, β, 1, color=pale_red)
 
 
+def xbreak_marker(ax, x, size=0.002, lw=0.7, slope=3, gap=0.002):
+    """
+    Draw a symmetric '//' axis break marker centered at x (data coords).
+
+    Parameters
+    ----------
+    ax : matplotlib axis
+    x : float
+        Center of the break marker (data units)
+    size : float
+        Half-length of each stroke in data units
+    lw : float
+        Line width
+    slope : float
+        Vertical rise per unit horizontal (controls angle)
+    """
+
+    # First stroke: from (x - size, y0 - slope*size) to (x + size, y0 + slope*size), shifted left by 'gap'
+    ax.plot(
+        [x - size - gap, x + size - gap],
+        [0 - slope * size, 0 + slope * size],
+        color="k",
+        lw=lw,
+        clip_on=False,
+    )
+
+    # Second stroke: shifted right by 'gap'
+    ax.plot(
+        [x - size + gap, x + size + gap],
+        [0 - slope * size, 0 + slope * size],
+        color="k",
+        lw=lw,
+        clip_on=False,
+    )
+
+
 def setup_threshold_plot(ax, λ1, λ2):
     ax.set_xlim(0, 1.1)
     ax.set_ylim(0, 1.1)
@@ -233,10 +271,10 @@ def setup_threshold_plot(ax, λ1, λ2):
 
 
 def setup_tradeoff_plot_MaxProb(ax, α_star):
-    ax.set_xlim(0, 0.6)
+    ax.set_xlim(x_min, 0.6)
     ax.set_ylim(0, 0.41)
 
-    xticks = [0, 1 / np.e, α_star]
+    xticks = [1 / np.e, α_star]
     xtick_labels = [
         f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for i, val in enumerate(xticks)
     ]
@@ -250,17 +288,18 @@ def setup_tradeoff_plot_MaxProb(ax, α_star):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.grid(True, linestyle="--")
+    xbreak_marker(ax, (x_min + 1 / np.e) / 2)
 
     ax.set_xlabel("Consistency (α)")
     ax.set_ylabel("Robustness (β)", labelpad=10)
-    ax.legend()
+    ax.legend(handlelength=1.7, fontsize=9, loc="lower left")
     plt.tight_layout()
 
 
 def setup_tradeoff_plot_MaxExp(ax, α_star, x, y):
-    ax.set_xlim(0, 0.77)
+    ax.set_xlim(x_min, 0.77)
     ax.set_ylim(0, 0.41)
-    xticks = [0, 1 / np.e, x[0], α_star]
+    xticks = [1 / np.e, x[0], α_star]
     xtick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for val in xticks]
     yticks = [0, *y, 1 / np.e]
     ytick_labels = [
@@ -280,8 +319,9 @@ def setup_tradeoff_plot_MaxExp(ax, α_star, x, y):
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.grid(True, linestyle="--")
+    xbreak_marker(ax, (x_min + 1 / np.e) / 2)
 
     ax.set_xlabel("Consistency (α)")
     ax.set_ylabel("Robustness (β)", labelpad=10)
-    ax.legend()
+    ax.legend(handlelength=1.7, fontsize=9, loc="lower left")
     plt.tight_layout()
