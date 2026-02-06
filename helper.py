@@ -299,7 +299,7 @@ def setup_tradeoff_plot_MaxProb(ax, α_star):
 def setup_tradeoff_plot_MaxExp(ax, α_star, x, y):
     ax.set_xlim(x_min, 0.77)
     ax.set_ylim(0, 0.41)
-    xticks = [1 / np.e, x[0], α_star]
+    xticks = [1 / np.e, *x, α_star]
     xtick_labels = [f"${val:.3f}$" if val != 0 else f"${val:.0f}$" for val in xticks]
     yticks = [0, *y, 1 / np.e]
     ytick_labels = [
